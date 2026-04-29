@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrary Larry vs Nikita the Russian Spy</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        
+        #gameContainer {
+            position: relative;
+            background: linear-gradient(45deg, #1a1a2e 0%, #16213e 100%);
+            border: 4px solid #00ff41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3),
+                        inset 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        canvas {
+            display: block;
+            background: #0f3460;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #00ff41;
+            font-size: 10px;
+            text-shadow: 2px 2px 0 #000, 0 0 10px rgba(0, 255, 65, 0.5);
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #ui div {
+            margin-bottom: 5px;
+        }
+        
+        .bar {
+            width: 150px;
+            height: 12px;
+            background: #000;
+            border: 2px solid #00ff41;
+            margin-top: 3px;
+            position: relative;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41 0%, #00cc33 100%);
+            transition: width 0.2s;
+        }
+        
+        .health-fill {
+            background: linear-gradient(90deg, #ff0041 0%, #cc0033 100%);
+        }
+        
+        #menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 4px solid #00ff41;
+            padding: 30px;
+            text-align: center;
+            color: #00ff41;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+        }
+        
+        #menu h1 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 0 #000, 0 0 15px rgba(0, 255, 65, 0.8);
+        }
+        
+        #menu h2 {
+            font-size: 12px;
+            margin-bottom: 20px;
+            color: #ff0041;
+            text-shadow: 2px 2px 0 #000;
+        }
+        
+        #pauseBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #00ff41;
+            color: #000;
+            border: 2px solid #000;
+            padding: 8px 16px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+            cursor: pointer;
+            z-index: 50;
+            box-shadow: 3px 3px 0 #000;
+        }
+        
+        #pauseBtn:hover {
+            background: #00cc33;
+        }
+        
+        #pauseMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.98);
+            border: 4px solid #00ff41;
+            padding: 40px;
+            text-align: center;
+            color: #00ff41;
+            z-index: 150;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+        }
+        
+        .menu-btn {
+            background: #00ff41;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.2s;
+            box-shadow: 4px 4px 0 #000;
+        }
+        
+        .menu-btn:hover {
+            background: #00cc33;
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 #000;
+        }
+        
+        .menu-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 #000;
+        }
+        
+        #upgradeMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 760px;
+            max-height: 92vh;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.96);
+            border: 4px solid #00ff41;
+            padding: 20px;
+            text-align: center;
+            color: #00ff41;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+        }
+
+        .upgrade-card.locked {
+            opacity: 0.38;
+            border-color: #555;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .upgrade-card.locked:hover {
+            transform: none;
+            box-shadow: none;
+            background: #16213e;
+        }
+
+        .tree-tag {
+            display: inline-block;
+            margin-bottom: 8px;
+            padding: 4px 6px;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            font-size: 6px;
+        }
+
+        .upgrade-card:has(.tree-tag[data-tree="BERSERKER"]) {
+            border-color: #f97316;
+        }
+
+        .lock-text {
+            margin-top: 8px;
+            color: #ff6b00;
+            font-size: 6px;
+            line-height: 1.4;
+        }
+
+        .lock-warning {
+            margin-top: 6px;
+            padding: 4px 6px;
+            border: 1px dashed #ff6b00;
+            color: #ff6b00;
+            font-size: 6px;
+            line-height: 1.4;
+        }
+
+        .lock-warning.danger {
+            border-color: #ff0041;
+            color: #ff0041;
+            border-style: solid;
+        }
+
+        .lock-progress {
+            margin-top: 6px;
+            font-size: 6px;
+            color: #9ca3af;
+            line-height: 1.4;
+        }
+
+        #treeStatus {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+            margin: 14px 0 6px 0;
+            padding: 10px;
+            border: 2px solid #1f4d7a;
+            background: rgba(15, 52, 96, 0.4);
+        }
+
+        .tree-pill {
+            font-size: 6px;
+            padding: 4px 6px;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            background: rgba(0,0,0,0.4);
+            line-height: 1.4;
+        }
+
+        .tree-pill.chosen {
+            border-color: #facc15;
+            color: #facc15;
+            box-shadow: 0 0 8px rgba(250, 204, 21, 0.5);
+        }
+
+        .tree-pill.locked {
+            border-color: #555;
+            color: #666;
+            text-decoration: line-through;
+        }
+
+        .tree-pill.warn {
+            border-color: #ff6b00;
+            color: #ff6b00;
+        }
+
+        .tree-pill .pill-count {
+            color: #fff;
+        }
+
+        #specHint {
+            font-size: 7px;
+            margin: 8px auto 4px auto;
+            color: #9ca3af;
+            line-height: 1.5;
+            max-width: 600px;
+        }
+
+        .lock-text {
+            color: #ff6b00;
+            font-size: 6px;
+            line-height: 1.4;
+        }
+
+        .upgrade-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .upgrade-card {
+            background: #16213e;
+            border: 3px solid #00ff41;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        
+        .upgrade-card:hover {
+            border-color: #00cc33;
+            background: #1a2642;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+        }
+        
+        .upgrade-card h3 {
+            font-size: 9px;
+            margin-bottom: 8px;
+            color: #ff0041;
+        }
+        
+        .upgrade-card p {
+            font-size: 7px;
+            line-height: 1.4;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 4px solid #ff0041;
+            padding: 40px;
+            text-align: center;
+            color: #ff0041;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(255, 0, 65, 0.5);
+        }
+        
+        #gameOver h1 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 0 #000, 0 0 15px rgba(255, 0, 65, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="ui">
+            <div>WAVE: <span id="wave">1</span></div>
+            <div>SCORE: <span id="score">0</span></div>
+            <div>HP:
+                <div class="bar">
+                    <div class="bar-fill health-fill" id="healthBar" style="width: 100%"></div>
+                </div>
+            </div>
+            <div>KILLS: <span id="kills">0</span></div>
+        </div>
+        
+        <div id="menu">
+            <h1>CONTRARY LARRY</h1>
+            <h2>VS NIKITA THE RUSSIAN SPY</h2>
+            <p style="font-size: 8px; margin: 20px 0;">Larry refuses to cooperate.<br>Nikita, a Russian spy-master, has sent his agents.</p>
+            <button class="menu-btn" onclick="startGame()">START MISSION</button>
+            <div style="font-size: 7px; margin-top: 20px; color: #666;">
+                WASD: MOVE | MOUSE: AIM | CLICK: SHOOT | P: PAUSE
+            </div>
+        </div>
+        
+        <button id="pauseBtn" class="hidden" onclick="togglePause()">PAUSE</button>
+        
+        <div id="pauseMenu" class="hidden">
+            <h1 style="font-size: 18px; margin-bottom: 30px;">PAUSED</h1>
+            <button class="menu-btn" onclick="togglePause()">RESUME</button>
+            <button class="menu-btn" onclick="location.reload()">RESTART</button>
+        </div>
+        
+        <div id="upgradeMenu" class="hidden">
+            <h1 style="font-size: 14px; margin-bottom: 12px;">WAVE SURVIVED!</h1>
+            <p style="font-size: 8px; margin-bottom: 8px;">Choose your upgrade wisely...</p>
+            <div id="treeStatus"></div>
+            <div id="specHint"></div>
+            <div class="upgrade-grid" id="upgradeOptions"></div>
+        </div>
+        
+        <div id="gameOver" class="hidden">
+            <h1>MISSION FAILED</h1>
+            <p style="font-size: 10px; margin: 20px 0;">Wave: <span id="finalWave">1</span></p>
+            <p style="font-size: 10px; margin: 20px 0;">Score: <span id="finalScore">0</span></p>
+            <button class="menu-btn" onclick="location.reload()">RETRY</button>
+        </div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        
+        const MAX_BULLET_SIZE = 8;
+        const MAX_BULLET_HITBOX = 12;
+        const MIN_FIRE_RATE = 50;
+        const BASE_CANVAS_WIDTH = 800;
+        const BASE_CANVAS_HEIGHT = 600;
+        const MAX_CANVAS_WIDTH = 1160;
+        const MAX_CANVAS_HEIGHT = 860;
+        
+        let gameState = 'menu';
+        let previousGameState = 'menu';
+        let isPaused = false;
+        let wave = 1;
+        let score = 0;
+        let kills = 0;
+        let waveSpawned = 0;
+        let waveTarget = 0;
+        let activeSpawnInterval = null;
+        let barrageTimer = 0;
+        
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 10,
+            speed: 2.8,
+            health: 100,
+            maxHealth: 100,
+            fireRate: 300,
+            lastShot: 0,
+            damage: 15,
+            bulletSpeed: 6,
+            bulletSize: 4,
+            piercing: false,
+            spread: 1,
+            multishot: 1,
+            lifeSteal: 0,
+            explosiveRounds: false,
+            recoil: 0,
+            armor: 0,
+            skillLevels: {},
+            lockedTrees: [],
+            chosenTree: null,
+            iframes: 0,
+            lastHitTime: 0,
+            critChance: 0,
+            invulnDuration: 30,
+            dashCooldown: 0,
+            hasDash: false,
+            hasRegen: false,
+            hasKnockbackAura: false,
+            autoDodge: false,
+            hasBarrage: false,
+            barrageDamage: 0,
+            chainExplosions: false,
+            // REANIMATION (necromancy) tree state
+            hasReanimation: false,
+            minionsPerPickup: 1,
+            minionDamageMult: 1,
+            minionHealthMult: 1,
+            minionLifespan: 600, // frames
+            minionShoots: false,
+            minionExplodes: false,
+            minionSpawnsOnKill: 0, // chance %
+            minionAura: false,
+            minionLifesteal: 0,   // HP healed per melee hit
+            necromancerStaff: false, // true when all thralls gone + has rean picks
+            permanentStaff: false,   // true once specialized into REANIMATION
+            staffCharge: 0,          // charge level for held-click staff shot (0..1)
+            minionTaunt: false,      // thralls draw enemy aggro
+            undyingLoyalty: false,   // a thrall intercepts when player is critically hit
+            // BERSERKER tree state
+            hasSword: false,           // gun replaced with swinging sword
+            swordDamage: 0,            // base sword damage
+            swordRange: 60,            // sword arc radius
+            swordSwingRate: 400,       // ms between swings (cooldown)
+            swordLastSwing: 0,
+            swordSwingTimer: 0,        // frames remaining in active swing arc
+            swordAngle: 0,             // current swing angle
+            swordArcWidth: Math.PI * 0.55, // arc half-width in radians
+            swordOnFire: false,        // Blazing Edge: sword leaves fire trail
+            swordFireDamage: 0,        // burn dps per tick
+            swordLifesteal: 0,         // % of sword damage healed
+            swordVampiric: false,      // Bloodthirst: full lifesteal enabled
+            berserkerRage: false,      // rage mode on low HP
+            swordWhirlwind: false,     // Whirlwind: 360 spin attack periodically
+            whirlwindTimer: 0,
+            swordShockwave: false,     // Shockwave: charged swing launches knockback wave
+            shockwaveCharge: 0,
+            swordEchoBlade: false,     // Echo Blade: spectral second strike
+            fireTrails: [],            // lingering fire zones on the ground
+            // SABOTAGE tree state
+            slowOnHit: 0, // 0..1 strength
+            slowDuration: 0, // frames
+            poisonDamage: 0, // dps multiplier
+            poisonDuration: 0, // frames
+            weakenStrength: 0, // 0..1, increases damage taken by enemy
+            stunChance: 0, // 0..1
+            confuseEnemies: false,
+            saboteurMark: false // marked enemies take more damage
+        };
+        
+        let bullets = [];
+        let enemyBullets = [];
+        let enemies = [];
+        let particles = [];
+        let powerups = [];
+        let minions = [];
+        let soulShards = [];
+        
+        const keys = {};
+        let mouse = { x: canvas.width/2, y: canvas.height/2, down: false };
+        
+        const treeNames = ['STUBBORNNESS', 'DEFIANCE', 'CHAOS', 'CONTRARIAN', 'REANIMATION', 'SABOTAGE', 'BERSERKER'];
+        const SPECIALIZATION_THRESHOLD = 4;
+        
+        const upgrades = [
+            // STUBBORNNESS tree - tank and survival
+            { id: 'stub1', tree: 'STUBBORNNESS', name: 'Thick Skin', desc: 'Larry ignores 15% damage.', max: 3, apply: () => { player.armor += 0.15; } },
+            { id: 'stub2', tree: 'STUBBORNNESS', name: 'Fortified', desc: '+25 max HP.', max: 3, apply: () => { player.maxHealth += 25; player.health += 25; } },
+            { id: 'stub3', tree: 'STUBBORNNESS', name: 'Unmovable', desc: 'Push enemies back on hit.', max: 3, requires: 'stub1', apply: () => { player.recoil += 1.2; } },
+            { id: 'stub4', tree: 'STUBBORNNESS', name: 'Contrary Shield', desc: 'Heal 3 HP per kill.', max: 2, requires: 'stub2', apply: () => { player.lifeSteal += 3; } },
+            { id: 'stub5', tree: 'STUBBORNNESS', name: 'Iron Will', desc: '+30 HP, +20% armor, slow regen.', max: 1, requires: 'stub3', apply: () => { player.maxHealth += 30; player.health += 30; player.armor += 0.20; player.hasRegen = true; }},
+            { id: 'stub6', tree: 'STUBBORNNESS', name: 'Bunker Training', desc: 'Enemy bullets hurt 35% less.', max: 1, requires: 'stub5', apply: () => { player.bulletArmor = 0.35; }},
+            { id: 'stub7', tree: 'STUBBORNNESS', name: 'PENULTIMATE: Last Stand', desc: 'Below 35% HP, gain armor and damage.', max: 1, requires: 'stub6', apply: () => { player.lastStand = true; }},
+            { id: 'stub8', tree: 'STUBBORNNESS', name: 'IMMOVABLE OBJECT', desc: 'Knockback aura, longer invulnerability.', max: 1, requires: 'stub7', apply: () => { player.recoil += 3; player.hasKnockbackAura = true; player.invulnDuration = 150; }},
+            
+            // DEFIANCE tree - focused damage
+            { id: 'def1', tree: 'DEFIANCE', name: 'Defiant Rounds', desc: '+40% bullet damage.', max: 3, apply: () => { player.damage *= 1.4; } },
+            { id: 'def2', tree: 'DEFIANCE', name: 'Rapid Defiance', desc: '-25% fire-rate delay.', max: 3, apply: () => { player.fireRate *= 0.75; } },
+            { id: 'def3', tree: 'DEFIANCE', name: 'Armor Piercing', desc: 'Bullets pierce enemies.', max: 1, requires: 'def1', apply: () => { player.piercing = true; } },
+            { id: 'def4', tree: 'DEFIANCE', name: 'Explosive Dissent', desc: 'Bullets explode on hit.', max: 1, requires: 'def1', apply: () => { player.explosiveRounds = true; } },
+            { id: 'def5', tree: 'DEFIANCE', name: 'Critical Strike', desc: '25% crit chance, 2x damage.', max: 1, requires: 'def3', apply: () => { player.critChance = 0.25; } },
+            { id: 'def6', tree: 'DEFIANCE', name: 'Dead Drop Ammo', desc: 'Crits reload your next shot faster.', max: 1, requires: 'def5', apply: () => { player.critReload = true; }},
+            { id: 'def7', tree: 'DEFIANCE', name: 'PENULTIMATE: No Witnesses', desc: 'Kills briefly boost damage.', max: 1, requires: 'def6', apply: () => { player.killDamageBoost = true; player.killBoostTimer = 0; }},
+            { id: 'def8', tree: 'DEFIANCE', name: 'OVERWHELMING FORCE', desc: 'Triple damage, near-instant reload.', max: 1, requires: 'def7', apply: () => { player.damage *= 3; player.fireRate = Math.max(player.fireRate * 0.4, MIN_FIRE_RATE); player.bulletSpeed *= 1.5; }},
+            
+            // CHAOS tree - spread and area damage
+            { id: 'chaos1', tree: 'CHAOS', name: 'Chaotic Burst', desc: 'Fire 1 extra bullet.', max: 3, apply: () => { player.multishot += 1; } },
+            { id: 'chaos2', tree: 'CHAOS', name: 'Scatter Shot', desc: 'Add 1 spread angle.', max: 2, apply: () => { player.spread += 1; } },
+            { id: 'chaos3', tree: 'CHAOS', name: 'Unpredictable', desc: '+30% bullet speed.', max: 2, requires: 'chaos1', apply: () => { player.bulletSpeed *= 1.3; } },
+            { id: 'chaos4', tree: 'CHAOS', name: 'Mayhem', desc: 'Bigger bullets, capped to prevent exploits.', max: 2, requires: 'chaos2', apply: () => { player.bulletSize *= 1.4; } },
+            { id: 'chaos5', tree: 'CHAOS', name: 'Chain Reaction', desc: 'Explosions chain to nearby foes.', max: 1, requires: 'chaos4', apply: () => { player.explosiveRounds = true; player.chainExplosions = true; }},
+            { id: 'chaos6', tree: 'CHAOS', name: 'Wild Ricochet', desc: 'Some bullets bounce once off walls.', max: 1, requires: 'chaos5', apply: () => { player.ricochet = true; }},
+            { id: 'chaos7', tree: 'CHAOS', name: 'PENULTIMATE: Spiral Pattern', desc: 'Barrage fires more often.', max: 1, requires: 'chaos6', apply: () => { player.barrageRateBonus = 35; }},
+            { id: 'chaos8', tree: 'CHAOS', name: 'BULLET HELL', desc: '360-degree rotating barrage.', max: 1, requires: 'chaos7', apply: () => { player.hasBarrage = true; player.barrageDamage = player.damage * 0.6; }},
+            
+            // CONTRARIAN tree - mobility and dodge
+            { id: 'contra1', tree: 'CONTRARIAN', name: 'Contrary Steps', desc: '+25% move speed.', max: 3, apply: () => { player.speed *= 1.25; } },
+            { id: 'contra2', tree: 'CONTRARIAN', name: 'Evasive', desc: '+0.25s invulnerability after hit.', max: 2, apply: () => { player.iframeBonus = (player.iframeBonus || 0) + 15; } },
+            { id: 'contra3', tree: 'CONTRARIAN', name: 'Fast Reflexes', desc: '+20% damage and speed.', max: 2, requires: 'contra1', apply: () => { player.damage *= 1.2; player.speed *= 1.2; } },
+            { id: 'contra4', tree: 'CONTRARIAN', name: 'Parkour', desc: '+15 HP, +15% speed.', max: 2, requires: 'contra1', apply: () => { player.maxHealth += 15; player.health += 15; player.speed *= 1.15; } },
+            { id: 'contra5', tree: 'CONTRARIAN', name: 'Shadow Step', desc: 'Dash with Space.', max: 1, requires: 'contra3', apply: () => { player.hasDash = true; player.dashCooldown = 0; }},
+            { id: 'contra6', tree: 'CONTRARIAN', name: 'Smoke Bomb', desc: 'Dash damages nearby enemies.', max: 1, requires: 'contra5', apply: () => { player.dashBlast = true; }},
+            { id: 'contra7', tree: 'CONTRARIAN', name: 'PENULTIMATE: Spybreaker', desc: 'Auto-dodge every few seconds.', max: 1, requires: 'contra6', apply: () => { player.autoDodge = true; player.autoDodgeCooldown = 0; }},
+            { id: 'contra8', tree: 'CONTRARIAN', name: 'PERFECT DODGE', desc: 'Longer invulnerability and faster dash.', max: 1, requires: 'contra7', apply: () => { player.invulnDuration = 90; player.dashMaxCooldown = 45; }},
+            
+            // REANIMATION tree - necromancy: powerup pickups raise allied agents
+            { id: 'rean1', tree: 'REANIMATION', name: 'Field Reanimation', desc: 'Picking up a drop raises a thrall. When all thralls fall, your gun becomes a Necromancer\'s Staff firing piercing dark orbs.', max: 1, apply: () => { player.hasReanimation = true; } },
+            { id: 'rean2', tree: 'REANIMATION', name: 'Mass Grave', desc: '+1 thrall raised per drop picked up.', max: 2, requires: 'rean1', apply: () => { player.minionsPerPickup += 1; } },
+            { id: 'rean3', tree: 'REANIMATION', name: 'Embalmed Bones', desc: 'Thralls have +60% health and live longer.', max: 2, requires: 'rean1', apply: () => { player.minionHealthMult *= 1.6; player.minionLifespan += 300; } },
+            { id: 'rean4', tree: 'REANIMATION', name: 'Bitter Spite', desc: 'Thralls deal +50% damage.', max: 2, requires: 'rean1', apply: () => { player.minionDamageMult *= 1.5; } },
+            { id: 'rean4b', tree: 'REANIMATION', name: 'Blood Tithe', desc: 'Thralls drain life on hit, healing you for each strike.', max: 3, requires: 'rean1', apply: () => { player.minionLifesteal += 1.5; } },
+            { id: 'rean5', tree: 'REANIMATION', name: 'Spectral Volley', desc: 'Thralls fire ghostly shots at enemies.', max: 1, requires: 'rean4', apply: () => { player.minionShoots = true; } },
+            { id: 'rean6', tree: 'REANIMATION', name: 'Restless Dead', desc: '15% chance enemies you kill rise as thralls.', max: 2, requires: 'rean3', apply: () => { player.minionSpawnsOnKill += 0.15; } },
+            { id: 'rean7', tree: 'REANIMATION', name: 'PENULTIMATE: Death Pact', desc: 'Thralls explode in spite when they fall.', max: 1, requires: 'rean5', apply: () => { player.minionExplodes = true; } },
+            { id: 'rean8', tree: 'REANIMATION', name: 'GRAVE COMMANDER', desc: 'Thralls slow nearby enemies. Massive thrall stat boost. Staff orbs grow larger and deal bonus damage.', max: 1, requires: 'rean7', apply: () => { player.minionAura = true; player.minionDamageMult *= 1.6; player.minionHealthMult *= 1.5; player.minionLifespan += 600; player.staffPowerBonus = true; } },
+            { id: 'rean9', tree: 'REANIMATION', name: 'Undying Loyalty', desc: 'Once per wave, when struck low (<25% HP), the nearest thrall teleports in and intercepts the next hit.', max: 1, requires: 'rean3', apply: () => { player.undyingLoyalty = true; player.loyaltyUsed = false; } },
+
+            // SABOTAGE tree - status effects, slows, poison, weakening
+            { id: 'sab1', tree: 'SABOTAGE', name: 'Slick Rounds', desc: 'Bullets slow enemies on hit.', max: 3, apply: () => { player.slowOnHit = Math.min(0.55, player.slowOnHit + 0.18); player.slowDuration = Math.max(player.slowDuration, 90); } },
+            { id: 'sab2', tree: 'SABOTAGE', name: 'Tainted Ammo', desc: 'Bullets poison enemies for damage over time.', max: 3, apply: () => { player.poisonDamage += 0.5; player.poisonDuration = Math.max(player.poisonDuration, 120); } },
+            { id: 'sab3', tree: 'SABOTAGE', name: 'Soft Targets', desc: 'Hit enemies take +20% damage from all sources.', max: 2, requires: 'sab1', apply: () => { player.weakenStrength = Math.min(0.5, player.weakenStrength + 0.20); } },
+            { id: 'sab4', tree: 'SABOTAGE', name: 'Concussion', desc: '15% chance to stun enemies briefly on hit.', max: 2, requires: 'sab1', apply: () => { player.stunChance = Math.min(0.45, player.stunChance + 0.15); } },
+            { id: 'sab5', tree: 'SABOTAGE', name: 'Acidic Trail', desc: 'Poison spreads to nearby enemies.', max: 1, requires: 'sab2', apply: () => { player.poisonSpreads = true; } },
+            { id: 'sab6', tree: 'SABOTAGE', name: 'False Orders', desc: 'Some hit enemies briefly attack each other.', max: 1, requires: 'sab3', apply: () => { player.confuseEnemies = true; } },
+            { id: 'sab7', tree: 'SABOTAGE', name: 'PENULTIMATE: Marked for Death', desc: 'Hits mark enemies. Marked enemies take +60% damage.', max: 1, requires: 'sab5', apply: () => { player.saboteurMark = true; } },
+            { id: 'sab8', tree: 'SABOTAGE', name: 'TOTAL SABOTAGE', desc: 'Doubled slow strength, poison ticks twice as fast.', max: 1, requires: 'sab7', apply: () => { player.slowOnHit = Math.min(0.75, player.slowOnHit * 2); player.poisonDamage *= 2; player.slowDuration += 60; } },
+
+            // UNIVERSAL upgrades are limited, so the endgame reward choice can appear.
+            { id: 'heal1', tree: 'UNIVERSAL', name: 'First Aid', desc: 'Restore 40 HP now.', max: 3, apply: () => { player.health = Math.min(player.health + 40, player.maxHealth); } },
+            { id: 'uni1', tree: 'UNIVERSAL', name: 'Field Upgrade', desc: '+15 HP, +10% damage.', max: 3, apply: () => { player.maxHealth += 15; player.health += 15; player.damage *= 1.1; } },
+            { id: 'uni2', tree: 'UNIVERSAL', name: 'Spy Map', desc: '+10% speed, +10% bullet speed.', max: 2, apply: () => { player.speed *= 1.1; player.bulletSpeed *= 1.1; } },
+
+            // BERSERKER tree — gun becomes a melee sword with escalating brutal abilities
+            { id: 'berk1', tree: 'BERSERKER', name: 'Drawn Steel', desc: 'Larry ditches the gun and draws a blade. Click to swing a sword arc. Deals high melee damage in a wide arc.', max: 1, apply: () => {
+                player.hasSword = true;
+                player.swordDamage = player.damage * 2.2;
+                player.damage = 0; // gun disabled
+            }},
+            { id: 'berk2', tree: 'BERSERKER', name: 'Sharpened Edge', desc: '+35% sword damage. Slightly wider arc.', max: 3, requires: 'berk1', apply: () => {
+                player.swordDamage *= 1.35;
+                player.swordArcWidth = Math.min(Math.PI * 0.85, player.swordArcWidth + 0.1);
+            }},
+            { id: 'berk3', tree: 'BERSERKER', name: 'Blazing Edge', desc: 'Sword ignites on fire. Enemies hit by the blade burn for damage over time. Fire pools linger on the ground.', max: 1, requires: 'berk1', apply: () => {
+                player.swordOnFire = true;
+                player.swordFireDamage = 6;
+            }},
+            { id: 'berk4', tree: 'BERSERKER', name: 'Inferno Blade', desc: 'Fire damage doubled. Burning enemies spread flames to nearby foes.', max: 1, requires: 'berk3', apply: () => {
+                player.swordFireDamage *= 2;
+            }},
+            { id: 'berk5', tree: 'BERSERKER', name: 'Bloodthirst', desc: 'Heals 15% of sword damage dealt per swing hit.', max: 2, requires: 'berk2', apply: () => {
+                player.swordLifesteal += 0.15;
+            }},
+            { id: 'berk6', tree: 'BERSERKER', name: 'Whirlwind', desc: 'Every 5 seconds, automatically spin a full 360° arc hitting all nearby enemies.', max: 1, requires: 'berk2', apply: () => {
+                player.swordWhirlwind = true;
+                player.whirlwindTimer = 300;
+            }},
+            { id: 'berk7', tree: 'BERSERKER', name: 'Echo Blade', desc: 'Each swing sends out a spectral second strike that passes through enemies for 50% damage.', max: 1, requires: 'berk5', apply: () => {
+                player.swordEchoBlade = true;
+            }},
+            { id: 'berk8', tree: 'BERSERKER', name: 'PENULTIMATE: Berserker Rage', desc: 'Below 40% HP, swing speed doubles and sword damage +50%.', max: 1, requires: 'berk6', apply: () => {
+                player.berserkerRage = true;
+            }},
+            { id: 'berk9', tree: 'BERSERKER', name: 'WAR INCARNATE', desc: 'Sword becomes a colossal flaming spirit blade. +100% damage, 360° Whirlwind recharges every 2s, Echo Blade auto-granted. Berserker Rage triggers at 60% HP.', max: 1, requires: 'berk8', apply: () => {
+                player.swordDamage *= 2;
+                player.swordRange = 90;
+                player.swordArcWidth = Math.PI * 0.9;
+                player.swordOnFire = true;
+                player.swordFireDamage = Math.max(player.swordFireDamage, 10) * 1.5;
+                player.swordEchoBlade = true;
+                player.whirlwindCooldownMax = 120; // 2 seconds
+                showSecretMessage('⚔ WAR INCARNATE\nSpirit blade awakened · Whirlwind cooldown slashed · 60% rage threshold');
+            }}
+        ];
+        
+        function levelOf(id) { return player.skillLevels[id] || 0; }
+        function getChosenTree() { return player.chosenTree || 'NONE'; }
+
+        function picksInTree(tree) {
+            return upgrades.filter(u => u.tree === tree).reduce((sum, u) => sum + levelOf(u.id), 0);
+        }
+        
+        function lockOpposingTrees(tree) {
+            if (tree === 'UNIVERSAL') return;
+            const levelsInTree = picksInTree(tree);
+            if (levelsInTree >= SPECIALIZATION_THRESHOLD && !player.chosenTree) {
+                player.chosenTree = tree;
+                player.lockedTrees = treeNames.filter(t => t !== tree);
+                // Secret specialization bonuses
+                if (tree === 'BERSERKER') {
+                    player.swordDamage *= 1.4;
+                    player.swordSwingRate = Math.max(200, player.swordSwingRate * 0.75);
+                    player.swordShockwave = true;
+                    showSecretMessage('⚔ BLADE MASTER\nSword mastered · Shockwave unlocked · Swing cooldown reduced');
+                }
+                if (tree === 'REANIMATION') {
+                    player.permanentStaff = true;
+                    player.necromancerStaff = true; // ensure it's on immediately
+                    player.minionTaunt = true;       // thralls now draw enemy aggro
+                    // Flash a secret message
+                    showSecretMessage('☠ NECROMANCER AWAKENED\nStaff permanent · Thralls taunt enemies · Charged shots unlocked');
+                }
+            }
+        }
+
+        let _secretMsgTimer = 0;
+        let _secretMsgText = '';
+        function showSecretMessage(text) {
+            _secretMsgText = text;
+            _secretMsgTimer = 220;
+        }
+        
+        function isUpgradeAvailable(u) {
+            if (player.lockedTrees.includes(u.tree)) return false;
+            if (levelOf(u.id) >= u.max) return false;
+            if (u.requires && levelOf(u.requires) <= 0) return false;
+            return true;
+        }
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+        canvas.addEventListener('mousedown', () => { mouse.down = true; });
+        canvas.addEventListener('mouseup', () => { mouse.down = false; });
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key.toLowerCase() === 'p' || e.key === 'Escape') togglePause();
+            if (e.key === ' ' && gameState === 'playing') dash();
+        });
+        document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        
+        function startGame() {
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.remove('hidden');
+            gameState = 'playing';
+            spawnWave();
+            gameLoop();
+        }
+        
+        function togglePause() {
+            if (gameState === 'menu' || gameState === 'gameover' || gameState === 'upgrade') return;
+            const menu = document.getElementById('pauseMenu');
+            if (!isPaused) {
+                previousGameState = gameState;
+                gameState = 'paused';
+                isPaused = true;
+                menu.classList.remove('hidden');
+                document.getElementById('pauseBtn').textContent = 'RESUME';
+            } else {
+                gameState = previousGameState === 'paused' ? 'playing' : previousGameState;
+                isPaused = false;
+                menu.classList.add('hidden');
+                document.getElementById('pauseBtn').textContent = 'PAUSE';
+            }
+        }
+        
+        function setMapSizeForWave() {
+            const growthSteps = Math.min(3, Math.floor((wave - 1) / 4));
+            const newW = Math.min(MAX_CANVAS_WIDTH, BASE_CANVAS_WIDTH + growthSteps * 120);
+            const newH = Math.min(MAX_CANVAS_HEIGHT, BASE_CANVAS_HEIGHT + growthSteps * 90);
+            if (canvas.width !== newW || canvas.height !== newH) {
+                const oldW = canvas.width;
+                const oldH = canvas.height;
+                canvas.width = newW;
+                canvas.height = newH;
+                ctx.imageSmoothingEnabled = false;
+                player.x += (newW - oldW) / 2;
+                player.y += (newH - oldH) / 2;
+                mouse.x += (newW - oldW) / 2;
+                mouse.y += (newH - oldH) / 2;
+            }
+        }
+        
+        function spawnWave() {
+            setMapSizeForWave();
+            waveSpawned = 0;
+            waveTarget = 8 + wave * 4 + Math.floor(wave / 3) * 2;
+            const spawnDelay = Math.max(150, 500 - wave * 18);
+            if (activeSpawnInterval) clearInterval(activeSpawnInterval);
+            if (player.undyingLoyalty) player.loyaltyUsed = false; // reset per wave
+            soulShards = [];
+            activeSpawnInterval = setInterval(() => {
+                if (gameState !== 'playing') return;
+                if (waveSpawned >= waveTarget) {
+                    clearInterval(activeSpawnInterval);
+                    activeSpawnInterval = null;
+                    return;
+                }
+                spawnEnemy();
+                waveSpawned++;
+            }, spawnDelay);
+        }
+        
+        function chooseEnemyType() {
+            const pool = [
+                { kind: 'scout', radius: 7, speed: 2.2 + wave * 0.08, health: 25 + wave * 4, contact: 0.8, color: '#00ff41', points: 10 },
+                { kind: 'agent', radius: 9, speed: 1.5 + wave * 0.06, health: 45 + wave * 8, contact: 1.2, color: '#ff0041', points: 15 }
+            ];
+            if (wave >= 2) pool.push({ kind: 'bruiser', radius: 12, speed: 1.0 + wave * 0.04, health: 80 + wave * 12, contact: 2.0, armor: 0.15, color: '#ff6b00', points: 25 });
+            if (wave >= 3) pool.push({ kind: 'shield', radius: 10, speed: 1.2 + wave * 0.05, health: 60 + wave * 10, contact: 1.0, armor: 0.25, color: '#c77dff', points: 20 });
+            if (wave >= 5) pool.push({ kind: 'marksman', radius: 8, speed: 1.0 + wave * 0.03, health: 55 + wave * 9, contact: 0.7, shootRate: 110, shootTimer: 60, color: '#facc15', points: 35 });
+            if (wave >= 7) pool.push({ kind: 'saboteur', radius: 8, speed: 2.6 + wave * 0.05, health: 45 + wave * 7, contact: 2.5, sprintTimer: 0, color: '#fb7185', points: 40 });
+            if (wave >= 9) pool.push({ kind: 'handler', radius: 11, speed: 1.1 + wave * 0.03, health: 120 + wave * 14, contact: 1.3, aura: true, color: '#38bdf8', points: 60 });
+            if (wave >= 12 && Math.random() < 0.18) pool.push({ kind: 'nikitaGuard', radius: 14, speed: 1.3 + wave * 0.03, health: 220 + wave * 20, contact: 2.8, armor: 0.20, shootRate: 80, shootTimer: 40, color: '#ef4444', points: 120 });
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+        
+        function spawnEnemy() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            if (side === 0) { x = Math.random() * canvas.width; y = -25; }
+            else if (side === 1) { x = canvas.width + 25; y = Math.random() * canvas.height; }
+            else if (side === 2) { x = Math.random() * canvas.width; y = canvas.height + 25; }
+            else { x = -25; y = Math.random() * canvas.height; }
+            enemies.push({ x, y, vx: 0, vy: 0, ...chooseEnemyType() });
+        }
+        
+        function shoot() {
+            // BERSERKER: sword mode replaces shooting
+            if (player.hasSword) {
+                swingSword();
+                return;
+            }
+            const now = Date.now();
+            let currentFireRate = player.fireRate;
+            if (player.killBoostTimer > 0) currentFireRate *= 0.85;
+
+            // Necromancer's Staff mode: charge while held, release fires mega orb
+            if (player.necromancerStaff) {
+                if (mouse.down) {
+                    // Charge up (handled in update)
+                    if (now - player.lastShot < currentFireRate * 0.6) return;
+                    // Fire small quick orb while charging if not holding long enough
+                    if (player.staffCharge < 0.05) {
+                        player.lastShot = now;
+                        fireStaffPulse(false);
+                    }
+                }
+                return;
+            }
+
+            if (now - player.lastShot < currentFireRate) return;
+            player.lastShot = now;
+
+            const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            for (let i = 0; i < player.multishot; i++) {
+                for (let s = 0; s < player.spread; s++) {
+                    const spreadAngle = (s - (player.spread - 1) / 2) * 0.25;
+                    const finalAngle = angle + spreadAngle + (Math.random() - 0.5) * 0.08;
+                    bullets.push(makeBullet(player.x, player.y, finalAngle, player.damage));
+                }
+            }
+        }
+
+        // Staff pulse: dark orb. charged=true fires a mega orb scaled to chargeLevel (0..1)
+        function fireStaffPulse(charged, chargeLevel) {
+            const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            const baseDmg = Math.max(12, player.damage * 0.55) * (player.staffPowerBonus ? 1.6 : 1);
+            const baseRadius = player.staffPowerBonus ? 22 : 14;
+            let dmg, radius, speed;
+            if (charged && chargeLevel > 0.15) {
+                const c = Math.min(1, chargeLevel);
+                dmg = baseDmg * (1.5 + c * 3.5);   // up to 5x damage at full charge
+                radius = baseRadius + c * 28;
+                speed = 2.5;
+                createParticles(player.x, player.y, '#7c3aed', 30);
+                createParticles(player.x, player.y, '#c4b5fd', 15);
+            } else {
+                dmg = baseDmg;
+                radius = baseRadius;
+                speed = 3.2;
+            }
+            bullets.push({
+                x: player.x, y: player.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius, hitRadius: radius,
+                damage: dmg,
+                piercing: true,
+                hits: 99,
+                age: 0,
+                bounces: 0,
+                isStaffOrb: true,
+                isCharged: charged,
+                hitEnemies: new Set()
+            });
+            if (!charged) createParticles(player.x, player.y, '#a78bfa', 12);
+        }
+        
+        function makeBullet(x, y, angle, damage) {
+            const size = Math.min(player.bulletSize, MAX_BULLET_SIZE);
+            return {
+                x, y,
+                vx: Math.cos(angle) * player.bulletSpeed,
+                vy: Math.sin(angle) * player.bulletSpeed,
+                radius: size,
+                hitRadius: Math.min(size * 1.5, MAX_BULLET_HITBOX),
+                damage,
+                piercing: player.piercing,
+                hits: 0,
+                age: 0,
+                bounces: player.ricochet ? 1 : 0
+            };
+        }
+        
+        function swingSword() {
+            if (!player.hasSword) return;
+            const now = Date.now();
+            let cooldown = player.swordSwingRate;
+            const raging = player.berserkerRage && player.health < player.maxHealth * (player.swordRange >= 90 ? 0.6 : 0.4);
+            if (raging) cooldown *= 0.5;
+            if (now - player.swordLastSwing < cooldown) return;
+            player.swordLastSwing = now;
+            const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            player.swordAngle = angle;
+            player.swordSwingTimer = 12; // frames the swing is active
+            applySwordHit(angle, player.swordRange, raging);
+            if (player.swordEchoBlade) {
+                // spectral echo: half damage, slightly wider, offset timing
+                setTimeout(() => applySwordHit(angle, player.swordRange + 12, raging, true), 80);
+            }
+            // Shockwave: charge builds on each swing, releases knockback blast
+            player.shockwaveCharge++;
+            if (player.swordShockwave && player.shockwaveCharge >= 3) {
+                player.shockwaveCharge = 0;
+                enemies.forEach(e => {
+                    const d = Math.hypot(e.x - player.x, e.y - player.y);
+                    if (d < 120) {
+                        const ka = Math.atan2(e.y - player.y, e.x - player.x);
+                        e.x += Math.cos(ka) * 28;
+                        e.y += Math.sin(ka) * 28;
+                        e.health -= player.swordDamage * 0.3;
+                    }
+                });
+                createParticles(player.x, player.y, '#fff', 30);
+            }
+        }
+
+        function applySwordHit(angle, range, raging, echo = false) {
+            const arcHalf = player.swordArcWidth;
+            let dmgMult = echo ? 0.5 : 1.0;
+            if (raging) dmgMult *= 1.5;
+            enemies.forEach(e => {
+                const d = Math.hypot(e.x - player.x, e.y - player.y);
+                if (d > range + e.radius) return;
+                const eAngle = Math.atan2(e.y - player.y, e.x - player.x);
+                let diff = eAngle - angle;
+                while (diff > Math.PI) diff -= 2 * Math.PI;
+                while (diff < -Math.PI) diff += 2 * Math.PI;
+                if (Math.abs(diff) > arcHalf) return;
+                const dmg = player.swordDamage * dmgMult;
+                e.health -= dmg;
+                // Lifesteal
+                if (player.swordLifesteal > 0) {
+                    player.health = Math.min(player.maxHealth, player.health + dmg * player.swordLifesteal);
+                }
+                // Fire: apply burn
+                if (player.swordOnFire && !echo) {
+                    e._burnDps = Math.max(e._burnDps || 0, player.swordFireDamage);
+                    e._burnTimer = Math.max(e._burnTimer || 0, 120);
+                    createParticles(e.x, e.y, '#ff6b00', 6);
+                    createParticles(e.x, e.y, '#fde68a', 3);
+                    // Drop a fire pool on the ground at enemy pos
+                    if (player.swordOnFire) {
+                        player.fireTrails.push({ x: e.x, y: e.y, life: 90, radius: 18 });
+                    }
+                    // Inferno spread: burning enemies spread to neighbors
+                    if (player.swordFireDamage >= 12) {
+                        enemies.forEach(other => {
+                            if (other !== e && Math.hypot(other.x - e.x, other.y - e.y) < 55 && !(other._burnTimer > 0)) {
+                                other._burnDps = player.swordFireDamage * 0.5;
+                                other._burnTimer = 80;
+                            }
+                        });
+                    }
+                }
+                // Knockback from sword strike
+                const ka = Math.atan2(e.y - player.y, e.x - player.x);
+                e.x += Math.cos(ka) * (echo ? 4 : 9);
+                e.y += Math.sin(ka) * (echo ? 4 : 9);
+                createParticles(e.x, e.y, echo ? '#c4b5fd' : '#fff', echo ? 4 : 8);
+            });
+        }
+
+        function updateSwordAndFire() {
+            if (!player.hasSword) return;
+            if (player.swordSwingTimer > 0) player.swordSwingTimer--;
+
+            // Whirlwind
+            if (player.swordWhirlwind) {
+                if (player.whirlwindTimer > 0) {
+                    player.whirlwindTimer--;
+                } else {
+                    // Trigger whirlwind: full 360 hit
+                    const wwAngle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+                    const savedArc = player.swordArcWidth;
+                    player.swordArcWidth = Math.PI; // full circle via two opposite swings
+                    applySwordHit(wwAngle, player.swordRange + 10, false);
+                    applySwordHit(wwAngle + Math.PI, player.swordRange + 10, false);
+                    player.swordArcWidth = savedArc;
+                    createParticles(player.x, player.y, player.swordOnFire ? '#ff6b00' : '#00ff41', 40);
+                    if (player.swordOnFire) createParticles(player.x, player.y, '#fde68a', 20);
+                    player.whirlwindTimer = player.whirlwindCooldownMax || 300;
+                }
+            }
+
+            // Burn ticks on enemies
+            enemies.forEach(e => {
+                if (e._burnTimer > 0) {
+                    e._burnTimer--;
+                    if (e._burnTimer % 15 === 0) {
+                        e.health -= e._burnDps;
+                        createParticles(e.x, e.y, '#ff6b00', 2);
+                    }
+                } else {
+                    e._burnDps = 0;
+                }
+            });
+
+            // Fire trail pools: linger on ground and burn enemies inside them
+            player.fireTrails = player.fireTrails.filter(ft => {
+                ft.life--;
+                enemies.forEach(e => {
+                    if (Math.hypot(e.x - ft.x, e.y - ft.y) < ft.radius + e.radius) {
+                        e._burnDps = Math.max(e._burnDps || 0, player.swordFireDamage * 0.6);
+                        e._burnTimer = Math.max(e._burnTimer || 0, 40);
+                    }
+                });
+                if (Math.random() < 0.15) createParticles(ft.x + (Math.random()-0.5)*ft.radius, ft.y + (Math.random()-0.5)*ft.radius, '#ff6b00', 1);
+                return ft.life > 0;
+            });
+        }
+
+        function fireBarrage() {            if (!player.hasBarrage) return;
+            barrageTimer--;
+            const rate = Math.max(20, 70 - (player.barrageRateBonus || 0));
+            if (barrageTimer > 0) return;
+            barrageTimer = rate;
+            for (let i = 0; i < 12; i++) {
+                const angle = (Math.PI * 2 / 12) * i + Date.now() / 500;
+                bullets.push(makeBullet(player.x, player.y, angle, player.barrageDamage || player.damage * 0.5));
+            }
+        }
+        
+        function dash() {
+            if (!player.hasDash || player.dashCooldown > 0) return;
+            const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            player.x += Math.cos(angle) * 80;
+            player.y += Math.sin(angle) * 80;
+            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+            player.iframes = 35;
+            player.dashCooldown = player.dashMaxCooldown || 70;
+            createParticles(player.x, player.y, '#9bf6ff', 25);
+            if (player.dashBlast) {
+                enemies.forEach(e => {
+                    if (Math.hypot(e.x - player.x, e.y - player.y) < 90) e.health -= player.damage * 1.2;
+                });
+            }
+        }
+        
+        function update() {
+            if (gameState !== 'playing') return;
+            if (player.iframes > 0) player.iframes--;
+            if (player.dashCooldown > 0) player.dashCooldown--;
+            if (player.autoDodgeCooldown > 0) player.autoDodgeCooldown--;
+            if (player.killBoostTimer > 0) player.killBoostTimer--;
+            if (player.hasRegen && waveSpawned % 6 === 0 && Math.random() < 0.02) player.health = Math.min(player.maxHealth, player.health + 0.25);
+            
+            let dx = 0, dy = 0;
+            if (keys['w'] || keys['arrowup']) dy -= 1;
+            if (keys['s'] || keys['arrowdown']) dy += 1;
+            if (keys['a'] || keys['arrowleft']) dx -= 1;
+            if (keys['d'] || keys['arrowright']) dx += 1;
+            if (dx || dy) {
+                const mag = Math.hypot(dx, dy);
+                player.x += (dx / mag) * player.speed;
+                player.y += (dy / mag) * player.speed;
+            }
+            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+            
+            if (mouse.down) shoot();
+            // Staff charged shot: charge while held, fire on release
+            if (player.necromancerStaff && player.permanentStaff) {
+                if (mouse.down) {
+                    player.staffCharge = Math.min(1, player.staffCharge + 0.008);
+                } else if (player.staffCharge > 0.15) {
+                    fireStaffPulse(true, player.staffCharge);
+                    player.staffCharge = 0;
+                    player.lastShot = Date.now();
+                } else {
+                    player.staffCharge = 0;
+                }
+            }
+            fireBarrage();
+            updateSwordAndFire();
+            updateBullets();
+            updateEnemies();
+            updateEnemyBullets();
+            updateMinions();
+            updatePowerupsAndParticles();
+            updateSoulShards();
+            if (_secretMsgTimer > 0) _secretMsgTimer--;
+            
+            if (enemies.length === 0 && waveSpawned >= waveTarget && gameState === 'playing') {
+                gameState = 'upgrade';
+                showUpgradeMenu();
+            }
+            if (player.health <= 0) gameOver();
+            updateUI();
+        }
+        
+        function updateBullets() {
+            bullets = bullets.filter(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+                b.age++;
+                if (b.bounces > 0 && (b.x < 0 || b.x > canvas.width)) { b.vx *= -1; b.bounces--; }
+                if (b.bounces > 0 && (b.y < 0 || b.y > canvas.height)) { b.vy *= -1; b.bounces--; }
+                return b.x > -30 && b.x < canvas.width + 30 && b.y > -30 && b.y < canvas.height + 30 && b.age < 120;
+            });
+            bullets.forEach(b => {
+                // Staff orb: clear hit tracking for enemies no longer in contact (allow re-hit on re-entry)
+                if (b.isStaffOrb && b.hitEnemies.size > 0) {
+                    b.hitEnemies.forEach(eIdx => {
+                        const e = enemies[eIdx];
+                        if (!e || Math.hypot(b.x - e.x, b.y - e.y) >= b.hitRadius + e.radius) {
+                            b.hitEnemies.delete(eIdx);
+                        }
+                    });
+                }
+                enemies.forEach((e, eIdx) => {
+                    const dist = Math.hypot(b.x - e.x, b.y - e.y);
+                    if (dist < b.hitRadius + e.radius) {
+                        // Staff orbs: only hit each enemy once while overlapping
+                        if (b.isStaffOrb) {
+                            if (b.hitEnemies.has(eIdx)) return;
+                            b.hitEnemies.add(eIdx);
+                            e.health -= b.damage * (1 - (e.armor || 0));
+                            createParticles(e.x, e.y, '#a78bfa', 8);
+                            return;
+                        }
+                        const armor = e.armor || 0;
+                        let dmg = b.damage;
+                        const crit = Math.random() < (player.critChance || 0);
+                        if (crit) {
+                            dmg *= 2;
+                            if (player.critReload) player.lastShot -= player.fireRate * 0.35;
+                        }
+                        if (player.lastStand && player.health < player.maxHealth * 0.35) dmg *= 1.35;
+                        if (player.killBoostTimer > 0) dmg *= 1.25;
+                        // Sabotage: weakened enemies take more damage
+                        if (player.weakenStrength > 0 && e._weakTimer > 0) dmg *= (1 + player.weakenStrength);
+                        // Sabotage: marked enemies take +60% damage
+                        if (player.saboteurMark && e._marked) dmg *= 1.6;
+                        e.health -= dmg * (1 - armor);
+                        // Apply Sabotage status effects (skip if bullet from minion to keep minions from stacking buffs unfairly)
+                        if (!b.fromMinion) {
+                            if (player.slowOnHit > 0) {
+                                e._slowAmount = Math.max(e._slowAmount || 0, player.slowOnHit);
+                                e._slowTimer = Math.max(e._slowTimer || 0, player.slowDuration);
+                            }
+                            if (player.poisonDamage > 0) {
+                                e._poisonDps = Math.max(e._poisonDps || 0, player.poisonDamage);
+                                e._poisonTimer = Math.max(e._poisonTimer || 0, player.poisonDuration);
+                            }
+                            if (player.weakenStrength > 0) e._weakTimer = 60;
+                            if (player.stunChance > 0 && Math.random() < player.stunChance) e._stunTimer = 30;
+                            if (player.saboteurMark) e._marked = true;
+                            if (player.confuseEnemies && Math.random() < 0.10) e._confused = 90;
+                        }
+                        if (player.explosiveRounds) createExplosion(e.x, e.y, player.chainExplosions);
+                        if (player.recoil > 0) {
+                            const knockbackAngle = Math.atan2(e.y - player.y, e.x - player.x);
+                            e.x += Math.cos(knockbackAngle) * player.recoil * 6;
+                            e.y += Math.sin(knockbackAngle) * player.recoil * 6;
+                        }
+                        if (!b.piercing) b.x = -999;
+                        else if (++b.hits > 3) b.x = -999;
+                        createParticles(e.x, e.y, crit ? '#ffffff' : e.color, crit ? 10 : 5);
+                    }
+                });
+            });
+        }
+        
+        function updateEnemies() {
+            enemies.forEach(e => {
+                // Status effect timers
+                if (e._slowTimer > 0) e._slowTimer--; else e._slowAmount = 0;
+                if (e._stunTimer > 0) e._stunTimer--;
+                if (e._weakTimer > 0) e._weakTimer--;
+                if (e._confused > 0) e._confused--;
+                if (e._minionSlow > 0) e._minionSlow--;
+                if (e._poisonTimer > 0) {
+                    e._poisonTimer--;
+                    const poisonInterval = (player.slowOnHit > 0.6 ? 8 : 16); // Total Sabotage doubles tick rate
+                    if (e._poisonTimer % poisonInterval === 0) {
+                        e.health -= e._poisonDps;
+                        if (player.poisonSpreads) {
+                            enemies.forEach(other => {
+                                if (other !== e && Math.hypot(other.x - e.x, other.y - e.y) < 60 && (other._poisonTimer || 0) <= 0) {
+                                    other._poisonDps = e._poisonDps * 0.7;
+                                    other._poisonTimer = 60;
+                                }
+                            });
+                        }
+                        if (Math.random() < 0.3) createParticles(e.x, e.y, '#84cc16', 2);
+                    }
+                }
+
+                // Stunned enemies don't move or shoot
+                if (e._stunTimer > 0) return;
+
+                // Determine target. Confused enemies target each other (or a minion)
+                let targetX = player.x;
+                let targetY = player.y;
+                // Thrall taunt: enemies prefer attacking minions when they're close
+                if (player.minionTaunt && minions.length > 0 && e._confused <= 0) {
+                    let closestMinion = null, closestDist = 999999;
+                    minions.forEach(m => {
+                        const d = Math.hypot(m.x - e.x, m.y - e.y);
+                        if (d < closestDist) { closestDist = d; closestMinion = m; }
+                    });
+                    // Only taunt if a minion is between the enemy and the player (within 180px)
+                    if (closestMinion && closestDist < 180) {
+                        targetX = closestMinion.x;
+                        targetY = closestMinion.y;
+                    }
+                }
+                if (e._confused > 0) {
+                    const others = enemies.filter(o => o !== e);
+                    if (others.length > 0) {
+                        const o = others[Math.floor(Math.random() * Math.min(3, others.length))];
+                        targetX = o.x; targetY = o.y;
+                    }
+                }
+
+                const dx = targetX - e.x;
+                const dy = targetY - e.y;
+                const dist = Math.max(1, Math.hypot(dx, dy));
+                let speed = e.speed;
+                if (e.kind === 'saboteur') {
+                    e.sprintTimer = (e.sprintTimer || 0) + 1;
+                    if (e.sprintTimer % 160 > 115) speed *= 1.8;
+                }
+                if (e.kind === 'marksman' && dist < 250) speed *= 0.25;
+                // Apply slow from sabotage / minion aura
+                const slowFromBullets = e._slowAmount || 0;
+                const slowFromMinions = e._minionSlow > 0 ? 0.35 : 0;
+                const totalSlow = Math.min(0.85, slowFromBullets + slowFromMinions);
+                speed *= (1 - totalSlow);
+                e.vx = (dx / dist) * speed;
+                e.vy = (dy / dist) * speed;
+                e.x += e.vx;
+                e.y += e.vy;
+                
+                if (e.shootRate) {
+                    e.shootTimer--;
+                    if (e.shootTimer <= 0) {
+                        e.shootTimer = Math.max(35, e.shootRate - wave * 2);
+                        const a = Math.atan2(player.y - e.y, player.x - e.x);
+                        enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * 3.2, vy: Math.sin(a) * 3.2, radius: 4, damage: e.kind === 'nikitaGuard' ? 8 : 5, age: 0, color: e.kind === 'nikitaGuard' ? '#ef4444' : '#facc15' });
+                    }
+                }
+                if (e.aura && Math.random() < 0.03) createParticles(e.x, e.y, '#38bdf8', 1);
+            });
+            
+            enemies = enemies.filter(e => {
+                if (e.health <= 0) {
+                    score += e.points;
+                    kills++;
+                    if (player.killDamageBoost) player.killBoostTimer = 120;
+                    if (player.lifeSteal > 0) player.health = Math.min(player.health + player.lifeSteal, player.maxHealth);
+                    createParticles(e.x, e.y, e.color, 15);
+                    if (Math.random() < 0.10) powerups.push({ x: e.x, y: e.y, type: Math.random() < 0.65 ? 'health' : 'damage', radius: 7 });
+                    // REANIMATION: Soul Shards drift toward player when specialized
+                    if (player.permanentStaff && Math.random() < 0.35) {
+                        soulShards.push({ x: e.x, y: e.y, vx: (Math.random()-0.5)*1.5, vy: (Math.random()-0.5)*1.5, life: 300, radius: 4 });
+                    }
+                    // REANIMATION: Restless Dead — chance to raise enemy as thrall
+                    if (player.minionSpawnsOnKill > 0 && Math.random() < player.minionSpawnsOnKill) {
+                        spawnMinionsAt(e.x, e.y, 1);
+                    }
+                    return false;
+                }
+                return true;
+            });
+            
+            const now = Date.now();
+            enemies.forEach(e => {
+                const dist = Math.hypot(e.x - player.x, e.y - player.y);
+                if (dist < e.radius + player.radius) {
+                    if (player.iframes <= 0 && now - player.lastHitTime > 90) {
+                        const reduction = Math.max(0, Math.min(0.75, player.armor + (player.lastStand && player.health < player.maxHealth * 0.35 ? 0.20 : 0)));
+                        const dmgToTake = e.contact * (1 - reduction);
+                        // Undying Loyalty: if this hit would drop us below 25%, a thrall intercepts
+                        if (player.undyingLoyalty && !player.loyaltyUsed && minions.length > 0 && player.health - dmgToTake < player.maxHealth * 0.25) {
+                            // Find nearest minion, sacrifice it
+                            let nearest = null, nearestD = 99999;
+                            minions.forEach(m => { const d = Math.hypot(m.x-player.x, m.y-player.y); if (d < nearestD) { nearestD=d; nearest=m; } });
+                            if (nearest) {
+                                nearest.health = -1; // kill it
+                                player.iframes = 80;
+                                player.loyaltyUsed = true;
+                                createParticles(player.x, player.y, '#a78bfa', 30);
+                                showSecretMessage('☠ THRALL INTERCEPTED THE HIT');
+                            } else {
+                                player.health -= dmgToTake;
+                                player.lastHitTime = now;
+                                player.iframes = (player.invulnDuration || 30) + (player.iframeBonus || 0);
+                            }
+                        } else {
+                            player.health -= dmgToTake;
+                            player.lastHitTime = now;
+                            player.iframes = (player.invulnDuration || 30) + (player.iframeBonus || 0);
+                        }
+                    }
+                    const pushAngle = Math.atan2(e.y - player.y, e.x - player.x);
+                    const pushForce = 3.5;
+                    e.x += Math.cos(pushAngle) * pushForce;
+                    e.y += Math.sin(pushAngle) * pushForce;
+                }
+                if (player.hasKnockbackAura && dist < 75) {
+                    const a = Math.atan2(e.y - player.y, e.x - player.x);
+                    e.x += Math.cos(a) * 1.5;
+                    e.y += Math.sin(a) * 1.5;
+                }
+            });
+        }
+        
+        function updateEnemyBullets() {
+            enemyBullets = enemyBullets.filter(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+                b.age++;
+                const dist = Math.hypot(b.x - player.x, b.y - player.y);
+                if (dist < b.radius + player.radius) {
+                    if (player.autoDodge && player.autoDodgeCooldown <= 0) {
+                        player.iframes = 35;
+                        player.autoDodgeCooldown = 240;
+                        createParticles(player.x, player.y, '#ffffff', 15);
+                        return false;
+                    }
+                    if (player.iframes <= 0) {
+                        const reduction = Math.max(0, Math.min(0.75, (player.bulletArmor || 0) + player.armor * 0.5));
+                        player.health -= b.damage * (1 - reduction);
+                        player.iframes = 20 + (player.iframeBonus || 0);
+                    }
+                    return false;
+                }
+                return b.x > -20 && b.x < canvas.width + 20 && b.y > -20 && b.y < canvas.height + 20 && b.age < 240;
+            });
+        }
+        
+        function updateMinions() {
+            minions = minions.filter(m => {
+                m.life--;
+                if (m.life <= 0 || m.health <= 0) {
+                    if (player.minionExplodes) {
+                        enemies.forEach(e => {
+                            if (Math.hypot(e.x - m.x, e.y - m.y) < 70) e.health -= m.damage * 1.5;
+                        });
+                        createParticles(m.x, m.y, '#a78bfa', 28);
+                    } else {
+                        createParticles(m.x, m.y, '#7c3aed', 10);
+                    }
+                    return false;
+                }
+                return true;
+            });
+
+            // Necromancer's Staff: permanent if specialized, otherwise only when thralls are all dead
+            if (player.permanentStaff) {
+                player.necromancerStaff = true;
+            } else if (player.hasReanimation) {
+                player.necromancerStaff = minions.length === 0;
+            }
+
+            minions.forEach(m => {
+                let target = null;
+                let bestDist = 99999;
+                enemies.forEach(e => {
+                    const d = Math.hypot(e.x - m.x, e.y - m.y);
+                    if (d < bestDist) { bestDist = d; target = e; }
+                });
+                if (target) {
+                    const a = Math.atan2(target.y - m.y, target.x - m.x);
+                    m.vx = Math.cos(a) * m.speed;
+                    m.vy = Math.sin(a) * m.speed;
+                    m.x += m.vx;
+                    m.y += m.vy;
+                    // Melee contact
+                    if (bestDist < target.radius + m.radius) {
+                        target.health -= m.damage * 0.08; // per-frame damage tick
+                        if (player.minionAura) target._minionSlow = 30;
+                        // Lifesteal: thrall heals player on melee
+                        if (player.minionLifesteal > 0) {
+                            player.health = Math.min(player.maxHealth, player.health + player.minionLifesteal * 0.08);
+                        }
+                    }
+                    // Aura slow
+                    if (player.minionAura) {
+                        enemies.forEach(e => {
+                            if (Math.hypot(e.x - m.x, e.y - m.y) < 80) e._minionSlow = Math.max(e._minionSlow || 0, 10);
+                        });
+                    }
+                    // Shooting
+                    if (player.minionShoots) {
+                        m.shootTimer--;
+                        if (m.shootTimer <= 0 && bestDist < 260) {
+                            m.shootTimer = 75;
+                            const ang = Math.atan2(target.y - m.y, target.x - m.x);
+                            const shotDmg = m.damage * 0.7;
+                            bullets.push({
+                                x: m.x, y: m.y,
+                                vx: Math.cos(ang) * 5,
+                                vy: Math.sin(ang) * 5,
+                                radius: 3,
+                                hitRadius: 5,
+                                damage: shotDmg,
+                                piercing: false,
+                                hits: 0,
+                                age: 0,
+                                bounces: 0,
+                                fromMinion: true
+                            });
+                            // lifesteal credit per shot fired (small)
+                            if (player.minionLifesteal > 0) {
+                                player.health = Math.min(player.maxHealth, player.health + player.minionLifesteal * 0.4);
+                            }
+                        }
+                    }
+                }
+                // Take damage from contact with enemies
+                enemies.forEach(e => {
+                    const d = Math.hypot(e.x - m.x, e.y - m.y);
+                    if (d < e.radius + m.radius) {
+                        m.health -= e.contact * 0.5;
+                    }
+                });
+            });
+        }
+
+        function drawMinion(m) {
+            const x = m.x, y = m.y, s = 2;
+            shadow(x, y, m.radius * 2, m.radius * 1.2);
+            // Translucent ghost-spy: pale cap, sunken face, faded coat.
+            ctx.globalAlpha = 0.85;
+            px(x - 6, y - 7, 6, 7, '#4c1d95', s);
+            px(x - 4, y - 12, 4, 4, '#e9d5ff', s);
+            px(x - 5, y - 14, 5, 2, '#7c3aed', s);
+            px(x - 2, y - 11, 1, 1, '#000', s);
+            px(x + 2, y - 11, 1, 1, '#000', s);
+            px(x - 4, y + 6, 2, 4, '#1e1b4b', s);
+            px(x + 2, y + 6, 2, 4, '#1e1b4b', s);
+            ctx.globalAlpha = 1;
+            // life bar
+            const w = 18;
+            const pct = Math.max(0, m.health / m.maxHealth);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x - w/2, y - 18, w, 3);
+            ctx.fillStyle = '#a78bfa';
+            ctx.fillRect(x - w/2, y - 18, w * pct, 3);
+        }
+
+        function updatePowerupsAndParticles() {
+            powerups = powerups.filter(p => {
+                const dist = Math.hypot(p.x - player.x, p.y - player.y);
+                if (dist < p.radius + player.radius) {
+                    if (p.type === 'health') player.health = Math.min(player.health + 18, player.maxHealth);
+                    else player.damage *= 1.04;
+                    createParticles(p.x, p.y, '#ffff00', 10);
+                    if (player.hasReanimation) spawnMinionsAt(p.x, p.y, player.minionsPerPickup);
+                    return false;
+                }
+                return true;
+            });
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                return p.life > 0;
+            });
+        }
+
+        function updateSoulShards() {
+            soulShards = soulShards.filter(s => {
+                s.life--;
+                // Drift toward player
+                const dx = player.x - s.x, dy = player.y - s.y;
+                const dist = Math.max(1, Math.hypot(dx, dy));
+                const pull = dist < 120 ? 0.18 : 0.04;
+                s.vx += (dx / dist) * pull;
+                s.vy += (dy / dist) * pull;
+                // Cap speed
+                const spd = Math.hypot(s.vx, s.vy);
+                if (spd > 3.5) { s.vx = (s.vx/spd)*3.5; s.vy = (s.vy/spd)*3.5; }
+                s.x += s.vx; s.y += s.vy;
+                if (dist < s.radius + player.radius + 4) {
+                    // Absorbed: heal small amount and restore staff charge
+                    player.health = Math.min(player.maxHealth, player.health + 4);
+                    if (player.permanentStaff) player.staffCharge = Math.min(1, player.staffCharge + 0.06);
+                    createParticles(s.x, s.y, '#a78bfa', 5);
+                    return false;
+                }
+                return s.life > 0;
+            });
+        }
+
+        function spawnMinionsAt(x, y, count) {
+            for (let i = 0; i < count; i++) {
+                const offsetA = Math.random() * Math.PI * 2;
+                minions.push({
+                    x: x + Math.cos(offsetA) * 12,
+                    y: y + Math.sin(offsetA) * 12,
+                    vx: 0, vy: 0,
+                    radius: 8,
+                    speed: 2.0,
+                    health: 55 * player.minionHealthMult,
+                    maxHealth: 55 * player.minionHealthMult,
+                    damage: 14 * player.minionDamageMult,
+                    contact: 0.5,
+                    life: player.minionLifespan,
+                    shootTimer: 30 + Math.floor(Math.random() * 30)
+                });
+            }
+            createParticles(x, y, '#a78bfa', 18);
+        }
+        
+        function updateUI() {
+            document.getElementById('wave').textContent = wave;
+            document.getElementById('score').textContent = score;
+            document.getElementById('kills').textContent = kills;
+            document.getElementById('healthBar').style.width = Math.max(0, player.health / player.maxHealth * 100) + '%';
+            // Staff mode indicator
+            let staffEl = document.getElementById('staffIndicator');
+            if (!staffEl) {
+                staffEl = document.createElement('div');
+                staffEl.id = 'staffIndicator';
+                staffEl.style.cssText = 'color:#a78bfa;text-shadow:0 0 8px #7c3aed;margin-top:4px;';
+                document.getElementById('ui').appendChild(staffEl);
+            }
+            staffEl.textContent = player.necromancerStaff
+                ? (player.permanentStaff ? '☠ NECROMANCER [HOLD: CHARGE]' : '☠ STAFF MODE')
+                : player.hasSword
+                    ? (player.swordOnFire
+                        ? `⚔🔥 BLAZING SWORD${player.swordWhirlwind ? ' · WHIRL ' + Math.ceil(player.whirlwindTimer/60) + 's' : ''}`
+                        : `⚔ SWORD MODE${player.swordWhirlwind ? ' · WHIRL ' + Math.ceil(player.whirlwindTimer/60) + 's' : ''}`)
+                    : (minions.length > 0 ? `THRALLS: ${minions.length}` : '');
+        }
+        
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({ x, y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, color, life: 20 + Math.random() * 25 });
+            }
+        }
+        
+        function createExplosion(x, y, chain = false) {
+            enemies.forEach(e => {
+                const dist = Math.hypot(e.x - x, e.y - y);
+                if (dist < 55) {
+                    e.health -= player.damage * 0.45;
+                    if (chain && dist > 8 && Math.random() < 0.25) createParticles(e.x, e.y, '#ff6b00', 12);
+                }
+            });
+            createParticles(x, y, '#ff6b00', 35);
+        }
+        
+        function px(x, y, w, h, color, scale = 2) {
+            ctx.fillStyle = color;
+            ctx.fillRect(Math.round(x), Math.round(y), w * scale, h * scale);
+        }
+        function shadow(x, y, w, h) {
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.fillRect(x - w / 2, y + h / 2, w, 5);
+        }
+        
+        function drawLarry(x, y, angle) {
+            const s = 2;
+            if (player.iframes > 0 && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
+            shadow(x, y, 30, 18);
+            // Larry: male blue-coated hero, square jaw, cap, tie, and blaster.
+            px(x - 10, y - 18, 10, 2, '#0ea5e9', s);
+            px(x - 8, y - 21, 8, 2, '#38bdf8', s);
+            px(x - 6, y - 18, 6, 5, '#f1c27d', s);
+            px(x - 7, y - 13, 7, 2, '#d08b5b', s);
+            px(x - 4, y - 16, 1, 1, '#000', s);
+            px(x + 4, y - 16, 1, 1, '#000', s);
+            px(x - 8, y - 8, 8, 8, '#1d3557', s);
+            px(x - 5, y - 7, 5, 6, '#3b82f6', s);
+            px(x - 1, y - 7, 1, 5, '#ff0041', s);
+            px(x - 8, y + 8, 3, 5, '#111827', s);
+            px(x + 4, y + 8, 3, 5, '#111827', s);
+
+            if (player.necromancerStaff) {
+                // Draw a glowing necromancer staff
+                const staffEnd = { x: x + Math.cos(angle) * 26, y: y - 4 + Math.sin(angle) * 26 };
+                ctx.strokeStyle = '#6d28d9';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 4);
+                ctx.lineTo(staffEnd.x, staffEnd.y);
+                ctx.stroke();
+                ctx.strokeStyle = '#c4b5fd';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 4);
+                ctx.lineTo(staffEnd.x, staffEnd.y);
+                ctx.stroke();
+                // Glowing orb at tip
+                const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 120);
+                ctx.globalAlpha = pulse;
+                ctx.fillStyle = '#a78bfa';
+                ctx.beginPath();
+                ctx.arc(staffEnd.x, staffEnd.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = player.iframes > 0 && Math.floor(Date.now() / 100) % 2 === 0 ? 0.5 : 1;
+            } else if (player.hasSword) {
+                // Draw swinging sword
+                const swinging = player.swordSwingTimer > 0;
+                const displayAngle = swinging ? player.swordAngle : angle;
+                const swordLen = player.swordRange >= 90 ? 38 : 28;
+                const isWar = player.swordRange >= 90;
+
+                // Fire glow behind sword if on fire
+                if (player.swordOnFire) {
+                    const fireAlpha = 0.35 + 0.25 * Math.sin(Date.now() / 60);
+                    ctx.globalAlpha = fireAlpha;
+                    ctx.strokeStyle = '#ff6b00';
+                    ctx.lineWidth = swinging ? 14 : 8;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y - 4);
+                    ctx.lineTo(x + Math.cos(displayAngle) * swordLen, y - 4 + Math.sin(displayAngle) * swordLen);
+                    ctx.stroke();
+                    ctx.globalAlpha = player.iframes > 0 && Math.floor(Date.now() / 100) % 2 === 0 ? 0.5 : 1;
+                }
+
+                // Draw arc when swinging
+                if (swinging) {
+                    ctx.globalAlpha = 0.18;
+                    ctx.fillStyle = player.swordOnFire ? '#fde68a' : (isWar ? '#c4b5fd' : '#00ff41');
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.arc(x, y, player.swordRange, displayAngle - player.swordArcWidth, displayAngle + player.swordArcWidth);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.globalAlpha = player.iframes > 0 && Math.floor(Date.now() / 100) % 2 === 0 ? 0.5 : 1;
+                }
+
+                // Whirlwind charge indicator ring
+                if (player.swordWhirlwind && player.whirlwindTimer <= 30) {
+                    const wwPulse = 0.4 + 0.4 * Math.sin(Date.now() / 60);
+                    ctx.globalAlpha = wwPulse;
+                    ctx.strokeStyle = player.swordOnFire ? '#fde68a' : '#fff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(x, y, player.swordRange + 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.globalAlpha = player.iframes > 0 && Math.floor(Date.now() / 100) % 2 === 0 ? 0.5 : 1;
+                }
+
+                // Sword blade
+                const bladeColor = isWar ? '#c4b5fd' : '#e2e8f0';
+                ctx.strokeStyle = bladeColor;
+                ctx.lineWidth = swinging ? 5 : 3;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 4);
+                ctx.lineTo(x + Math.cos(displayAngle) * swordLen, y - 4 + Math.sin(displayAngle) * swordLen);
+                ctx.stroke();
+                // Handle cross-guard
+                const guardX = x + Math.cos(displayAngle) * 8;
+                const guardY = y - 4 + Math.sin(displayAngle) * 8;
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(guardX + Math.cos(displayAngle + Math.PI/2) * 7, guardY + Math.sin(displayAngle + Math.PI/2) * 7);
+                ctx.lineTo(guardX + Math.cos(displayAngle - Math.PI/2) * 7, guardY + Math.sin(displayAngle - Math.PI/2) * 7);
+                ctx.stroke();
+                // Tip gleam
+                ctx.fillStyle = swinging ? '#fff' : bladeColor;
+                ctx.beginPath();
+                ctx.arc(x + Math.cos(displayAngle) * swordLen, y - 4 + Math.sin(displayAngle) * swordLen, swinging ? 4 : 2, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 4);
+                ctx.lineTo(x + Math.cos(angle) * 18, y - 4 + Math.sin(angle) * 18);
+                ctx.stroke();
+                px(x + Math.cos(angle) * 16 - 2, y - 4 + Math.sin(angle) * 16 - 2, 3, 3, '#00ff41', 1);
+            }
+            ctx.globalAlpha = 1;
+        }
+        
+        function drawAgent(e) {
+            const x = e.x, y = e.y, s = 2;
+            shadow(x, y, e.radius * 2.3, e.radius * 1.4);
+            const coatColors = { scout: '#064e3b', agent: '#2b2d42', bruiser: '#7f1d1d', shield: '#3b0764', marksman: '#713f12', saboteur: '#881337', handler: '#075985', nikitaGuard: '#450a0a' };
+            const coat = coatColors[e.kind] || '#2b2d42';
+            // Nikita's agents: masculine spy silhouettes with coats, boots, hats, and no feminine sprite cues.
+            px(x - 7, y - 9, 7, 9, coat, s);
+            px(x - 5, y - 15, 5, 5, '#f1c27d', s);
+            px(x - 6, y - 11, 6, 2, '#7c2d12', s); // jaw/beard line
+            px(x - 7, y - 17, 7, 2, e.kind === 'nikitaGuard' ? '#ef4444' : '#8b0000', s);
+            px(x - 9, y - 13, 2, 5, e.kind === 'nikitaGuard' ? '#ef4444' : '#8b0000', s);
+            px(x + 8, y - 13, 2, 5, e.kind === 'nikitaGuard' ? '#ef4444' : '#8b0000', s);
+            px(x - 5, y + 8, 2, 5, '#111', s);
+            px(x + 4, y + 8, 2, 5, '#111', s);
+            px(x - 3, y - 13, 1, 1, '#000', s);
+            px(x + 4, y - 13, 1, 1, '#000', s);
+            if (e.kind === 'marksman' || e.kind === 'nikitaGuard') {
+                px(x + 7, y - 5, 8, 1, '#f8fafc', s);
+            }
+            if (e.kind === 'saboteur') {
+                px(x - 10, y - 4, 3, 3, '#fb7185', s);
+                px(x + 8, y - 4, 3, 3, '#fb7185', s);
+            }
+            if (e.kind === 'handler') {
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y, 24, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            if (e.kind === 'shield') {
+                ctx.strokeStyle = '#c77dff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x - 13, y - 15, 26, 30);
+            }
+            if (e.kind === 'nikitaGuard') {
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x - 16, y - 18, 32, 36);
+            }
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#0f3460';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(0, 255, 65, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+            for (let i = 0; i < canvas.height; i += 40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
+            
+            // Soul shards
+            soulShards.forEach(s => {
+                const alpha = Math.min(1, s.life / 60);
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = '#a78bfa';
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ede9fe';
+                ctx.beginPath();
+                ctx.arc(s.x - 1, s.y - 1, s.radius * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+
+            // Fire trail pools (BERSERKER)
+            if (player.fireTrails && player.fireTrails.length > 0) {
+                player.fireTrails.forEach(ft => {
+                    const alpha = Math.min(0.45, ft.life / 90 * 0.45);
+                    ctx.globalAlpha = alpha;
+                    const grad = ctx.createRadialGradient(ft.x, ft.y, 0, ft.x, ft.y, ft.radius);
+                    grad.addColorStop(0, '#fde68a');
+                    grad.addColorStop(0.5, '#ff6b00');
+                    grad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(ft.x, ft.y, ft.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                });
+            }
+
+            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life / 40; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); });
+            ctx.globalAlpha = 1;
+            powerups.forEach(p => { ctx.fillStyle = p.type === 'health' ? '#ff0080' : '#ffff00'; ctx.fillRect(p.x - p.radius, p.y - p.radius, p.radius * 2, p.radius * 2); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(p.x - p.radius, p.y - p.radius, p.radius * 2, p.radius * 2); });
+            bullets.forEach(b => {
+                if (b.isStaffOrb) {
+                    // Pulsing dark energy orb
+                    const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
+                    ctx.globalAlpha = 0.9 * pulse;
+                    ctx.fillStyle = b.isCharged ? '#4c1d95' : '#6d28d9';
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 0.7;
+                    ctx.fillStyle = b.isCharged ? '#7c3aed' : '#c4b5fd';
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.radius * 0.55, 0, Math.PI * 2);
+                    ctx.fill();
+                    if (b.isCharged) {
+                        ctx.globalAlpha = 0.4 * pulse;
+                        ctx.fillStyle = '#ede9fe';
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, b.radius * 0.25, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1;
+                } else if (b.fromMinion) { ctx.fillStyle = '#a78bfa'; ctx.fillRect(b.x - b.radius, b.y - b.radius, b.radius * 2, b.radius * 2); ctx.fillStyle = '#fff'; ctx.fillRect(b.x - 1, b.y - 1, 2, 2); }
+                else { ctx.fillStyle = player.explosiveRounds ? '#ff6b00' : '#00ff41'; ctx.fillRect(b.x - b.radius, b.y - b.radius, b.radius * 2, b.radius * 2); ctx.fillStyle = '#fff'; ctx.fillRect(b.x - 1, b.y - 1, 2, 2); }
+            });
+            enemyBullets.forEach(b => { ctx.fillStyle = b.color || '#facc15'; ctx.fillRect(b.x - b.radius, b.y - b.radius, b.radius * 2, b.radius * 2); });
+            enemies.forEach(e => {
+                drawAgent(e);
+                // Status effect indicators
+                if (e._poisonTimer > 0) {
+                    ctx.fillStyle = 'rgba(132, 204, 22, 0.35)';
+                    ctx.fillRect(e.x - e.radius - 2, e.y - e.radius - 2, e.radius * 2 + 4, e.radius * 2 + 4);
+                }
+                if (e._slowTimer > 0) {
+                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(e.x, e.y, e.radius + 4, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                if (e._stunTimer > 0) {
+                    ctx.fillStyle = '#facc15';
+                    ctx.fillRect(e.x - 2, e.y - e.radius - 8, 4, 4);
+                }
+                if (e._marked) {
+                    ctx.strokeStyle = '#ff0041';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(e.x - 6, e.y - e.radius - 10);
+                    ctx.lineTo(e.x + 6, e.y - e.radius - 4);
+                    ctx.moveTo(e.x + 6, e.y - e.radius - 10);
+                    ctx.lineTo(e.x - 6, e.y - e.radius - 4);
+                    ctx.stroke();
+                }
+            });
+            minions.forEach(drawMinion);
+            drawLarry(player.x, player.y, Math.atan2(mouse.y - player.y, mouse.x - player.x));
+
+            // Staff charge bar
+            if (player.necromancerStaff && player.permanentStaff && player.staffCharge > 0.01) {
+                const bw = 36, bh = 5;
+                const bx = player.x - bw/2, by = player.y - 30;
+                ctx.fillStyle = '#1e1b4b';
+                ctx.fillRect(bx, by, bw, bh);
+                const grad = ctx.createLinearGradient(bx, by, bx + bw, by);
+                grad.addColorStop(0, '#6d28d9');
+                grad.addColorStop(1, '#c4b5fd');
+                ctx.fillStyle = grad;
+                ctx.fillRect(bx, by, bw * player.staffCharge, bh);
+                if (player.staffCharge >= 1) {
+                    ctx.fillStyle = player.staffCharge >= 1 ? '#fff' : 'transparent';
+                    ctx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 80);
+                    ctx.fillRect(bx, by, bw, bh);
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            // Secret message overlay
+            if (_secretMsgTimer > 0) {
+                const alpha = Math.min(1, _secretMsgTimer / 40) * Math.min(1, (_secretMsgTimer) / 20);
+                ctx.globalAlpha = Math.min(1, alpha);
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(canvas.width/2 - 220, canvas.height/2 - 36, 440, 72);
+                ctx.strokeStyle = '#7c3aed';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(canvas.width/2 - 220, canvas.height/2 - 36, 440, 72);
+                ctx.fillStyle = '#c4b5fd';
+                ctx.font = '9px "Press Start 2P", monospace';
+                ctx.textAlign = 'center';
+                const lines = _secretMsgText.split('\n');
+                lines.forEach((line, i) => ctx.fillText(line, canvas.width/2, canvas.height/2 - 12 + i * 20));
+                ctx.textAlign = 'left';
+                ctx.globalAlpha = 1;
+            }
+            
+            if (gameState === 'paused') {
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+        
+        function showFallbackRewards(options) {
+            const healCard = document.createElement('div');
+            healCard.className = 'upgrade-card';
+            healCard.innerHTML = `<span class="tree-tag">SUPPLY DROP</span><h3>FIELD MEDIC</h3><p>Heal 25% of max HP.</p>`;
+            healCard.onclick = () => chooseReward('heal');
+            options.appendChild(healCard);
+            const scoreCard = document.createElement('div');
+            scoreCard.className = 'upgrade-card';
+            scoreCard.innerHTML = `<span class="tree-tag">SUPPLY DROP</span><h3>INTEL CACHE</h3><p>Gain 500 points.</p>`;
+            scoreCard.onclick = () => chooseReward('score');
+            options.appendChild(scoreCard);
+        }
+        
+        function chooseReward(type) {
+            if (type === 'heal') player.health = Math.min(player.maxHealth, player.health + player.maxHealth * 0.25);
+            if (type === 'score') score += 500;
+            document.getElementById('upgradeMenu').classList.add('hidden');
+            wave++;
+            gameState = 'playing';
+            spawnWave();
+        }
+        
+        function renderTreeStatus() {
+            const panel = document.getElementById('treeStatus');
+            panel.innerHTML = '';
+            treeNames.forEach(t => {
+                const picks = picksInTree(t);
+                const isChosen = player.chosenTree === t;
+                const isLocked = player.lockedTrees.includes(t);
+                const willTrigger = !player.chosenTree && picks >= SPECIALIZATION_THRESHOLD - 1 && picks < SPECIALIZATION_THRESHOLD;
+                let cls = 'tree-pill';
+                let suffix = '';
+                if (isChosen) { cls += ' chosen'; suffix = ' ★ SPECIALIZED'; }
+                else if (isLocked) { cls += ' locked'; suffix = ' LOCKED'; }
+                else if (willTrigger) { cls += ' warn'; suffix = ' ⚠ NEXT PICK LOCKS OTHERS'; }
+                const pill = document.createElement('span');
+                pill.className = cls;
+                pill.innerHTML = `${t} <span class="pill-count">${picks}/${SPECIALIZATION_THRESHOLD}</span>${suffix}`;
+                panel.appendChild(pill);
+            });
+            // Universal pill (never locks)
+            const uniPicks = picksInTree('UNIVERSAL');
+            const uniPill = document.createElement('span');
+            uniPill.className = 'tree-pill';
+            uniPill.style.borderColor = '#9ca3af';
+            uniPill.style.color = '#9ca3af';
+            uniPill.innerHTML = `UNIVERSAL <span class="pill-count">${uniPicks}</span> · never locks`;
+            panel.appendChild(uniPill);
+        }
+
+        function showUpgradeMenu() {
+            const menu = document.getElementById('upgradeMenu');
+            const options = document.getElementById('upgradeOptions');
+            const specHint = document.getElementById('specHint');
+            options.innerHTML = '';
+            renderTreeStatus();
+
+            if (player.chosenTree) {
+                specHint.innerHTML = `Specialized in <b style="color:#facc15;">${player.chosenTree}</b>. All other main trees are permanently locked. UNIVERSAL upgrades remain available.`;
+            } else {
+                specHint.innerHTML = `Pick <b>${SPECIALIZATION_THRESHOLD}</b> upgrades from the same main tree to specialize. Doing so <b style="color:#ff0041;">permanently locks</b> the other main trees. UNIVERSAL upgrades never trigger this.`;
+            }
+
+            const available = upgrades.filter(isUpgradeAvailable);
+            const locked = upgrades.filter(u => !isUpgradeAvailable(u) && levelOf(u.id) < u.max).slice(0, 2);
+            // Try to show variety: pick at most 1-2 cards per tree so all available paths are visible
+            const shuffled = [...available].sort(() => Math.random() - 0.5);
+            const choices = [];
+            const treeCount = {};
+            for (const u of shuffled) {
+                if ((treeCount[u.tree] || 0) >= (player.chosenTree ? 2 : 1)) continue;
+                choices.push(u);
+                treeCount[u.tree] = (treeCount[u.tree] || 0) + 1;
+                if (choices.length >= 4) break;
+            }
+            // Fill remaining slots ignoring per-tree cap if we couldn't reach 4
+            if (choices.length < 4) {
+                for (const u of shuffled) {
+                    if (choices.includes(u)) continue;
+                    choices.push(u);
+                    if (choices.length >= 4) break;
+                }
+            }
+            if (available.length === 0) {
+                menu.querySelector('p').innerHTML = `Wave ${wave} survived! No upgrades remain because your path is complete or locked out. Choose a supply reward.`;
+                showFallbackRewards(options);
+                menu.classList.remove('hidden');
+                return;
+            }
+            if (choices.length < 4) choices.push(...locked.slice(0, 4 - choices.length));
+            choices.forEach(upgrade => {
+                const usable = isUpgradeAvailable(upgrade);
+                const lockedReason = player.lockedTrees.includes(upgrade.tree)
+                    ? `LOCKED — ${getChosenTree()} specialization closed this tree.`
+                    : (upgrade.requires && levelOf(upgrade.requires) <= 0
+                        ? `LOCKED — requires earlier skill in ${upgrade.tree} tree.`
+                        : 'LOCKED — already maxed.');
+
+                // Lock-warning preview for available cards
+                let warningHTML = '';
+                if (usable && upgrade.tree !== 'UNIVERSAL' && !player.chosenTree) {
+                    const currentPicks = picksInTree(upgrade.tree);
+                    const afterPicks = currentPicks + 1;
+                    if (afterPicks >= SPECIALIZATION_THRESHOLD) {
+                        const others = treeNames.filter(t => t !== upgrade.tree).join(', ');
+                        warningHTML = `<div class="lock-warning danger">⚠ PICKING THIS LOCKS: ${others}</div>`;
+                    } else {
+                        const remaining = SPECIALIZATION_THRESHOLD - afterPicks;
+                        warningHTML = `<div class="lock-progress">${upgrade.tree}: ${currentPicks} → ${afterPicks}/${SPECIALIZATION_THRESHOLD} · ${remaining} more pick${remaining === 1 ? '' : 's'} in this tree locks others</div>`;
+                    }
+                } else if (usable && upgrade.tree === 'UNIVERSAL') {
+                    warningHTML = `<div class="lock-progress">Universal — does not affect tree locking.</div>`;
+                } else if (usable && player.chosenTree) {
+                    warningHTML = `<div class="lock-progress">In your chosen tree — safe to take.</div>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = 'upgrade-card' + (usable ? '' : ' locked');
+                card.innerHTML = `<span class="tree-tag">${upgrade.tree} ${levelOf(upgrade.id)}/${upgrade.max}</span><h3>${upgrade.name}</h3><p>${upgrade.desc}</p>${usable ? warningHTML : `<div class="lock-text">${lockedReason}</div>`}`;
+                if (usable) {
+                    card.onclick = () => {
+                        player.skillLevels[upgrade.id] = levelOf(upgrade.id) + 1;
+                        lockOpposingTrees(upgrade.tree);
+                        upgrade.apply();
+                        player.bulletSize = Math.min(player.bulletSize, MAX_BULLET_SIZE);
+                        player.fireRate = Math.max(player.fireRate, MIN_FIRE_RATE);
+                        menu.classList.add('hidden');
+                        wave++;
+                        gameState = 'playing';
+                        spawnWave();
+                    };
+                }
+                options.appendChild(card);
+            });
+            menu.querySelector('p').innerHTML = `Wave ${wave} survived! ${player.chosenTree ? 'Specialized path: ' + player.chosenTree + '.' : 'Choose carefully — 4 picks in one main tree locks the others.'}`;
+            menu.classList.remove('hidden');
+        }
+        
+        function gameOver() {
+            gameState = 'gameover';
+            if (activeSpawnInterval) clearInterval(activeSpawnInterval);
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('finalWave').textContent = wave;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').classList.remove('hidden');
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+
+</body>
+</html>
