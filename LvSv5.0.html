@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -311,6 +311,69 @@
             line-height: 1.4;
         }
         
+        #leaderboardPanel, #leaderboardGameOver {
+            margin-top: 18px;
+            padding: 12px;
+            border: 2px solid #1f4d7a;
+            background: rgba(15, 52, 96, 0.45);
+            color: #00ff41;
+            font-size: 7px;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        #leaderboardPanel h3, #leaderboardGameOver h3 {
+            color: #facc15;
+            font-size: 8px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        #scoreNameInput {
+            width: 220px;
+            padding: 8px;
+            margin-top: 10px;
+            background: #0f172a;
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+            text-align: center;
+        }
+
+        #upgradeTreePanel {
+            margin: 12px 0;
+            max-height: 170px;
+            overflow-y: auto;
+            padding: 8px;
+            border: 2px solid #1f4d7a;
+            background: rgba(15, 23, 42, 0.8);
+            text-align: left;
+        }
+
+        .tree-block {
+            margin-bottom: 8px;
+            padding-bottom: 7px;
+            border-bottom: 1px dashed #334155;
+        }
+
+        .tree-title {
+            color: #facc15;
+            font-size: 7px;
+            margin-bottom: 5px;
+        }
+
+        .branch-line {
+            font-size: 6px;
+            line-height: 1.6;
+            color: #9ca3af;
+        }
+
+        .node-owned { color: #00ff41; }
+        .node-open { color: #e5e7eb; }
+        .node-locked { color: #555; text-decoration: line-through; }
+        .branch-chosen { color: #38bdf8; }
+
         .hidden {
             display: none !important;
         }
@@ -356,6 +419,7 @@
             <h2>VS NIKITA THE RUSSIAN SPY</h2>
             <p style="font-size: 8px; margin: 20px 0;">Larry refuses to cooperate.<br>Nikita, a Russian spy-master, has sent his agents.</p>
             <button class="menu-btn" onclick="startGame()">START MISSION</button>
+            <div id="leaderboardPanel"></div>
             <div style="font-size: 7px; margin-top: 20px; color: #666;">
                 WASD: MOVE | MOUSE: AIM | CLICK: SHOOT | P: PAUSE
             </div>
@@ -374,6 +438,7 @@
             <p style="font-size: 8px; margin-bottom: 8px;">Choose your upgrade wisely...</p>
             <div id="treeStatus"></div>
             <div id="specHint"></div>
+            <div id="upgradeTreePanel"></div>
             <div class="upgrade-grid" id="upgradeOptions"></div>
         </div>
         
@@ -381,6 +446,13 @@
             <h1>MISSION FAILED</h1>
             <p style="font-size: 10px; margin: 20px 0;">Wave: <span id="finalWave">1</span></p>
             <p style="font-size: 10px; margin: 20px 0;">Score: <span id="finalScore">0</span></p>
+            <div id="highScoreEntry">
+                <p style="font-size: 8px; line-height: 1.5;">Enter your name for the local high score board:</p>
+                <input id="scoreNameInput" maxlength="12" value="LARRY">
+                <br>
+                <button class="menu-btn" onclick="submitHighScore()">SAVE SCORE</button>
+            </div>
+            <div id="leaderboardGameOver"></div>
             <button class="menu-btn" onclick="location.reload()">RETRY</button>
         </div>
     </div>
@@ -431,6 +503,7 @@
             skillLevels: {},
             lockedTrees: [],
             chosenTree: null,
+            chosenBranches: {},
             iframes: 0,
             lastHitTime: 0,
             critChance: 0,
@@ -461,7 +534,11 @@
             weakenStrength: 0, // 0..1, increases damage taken by enemy
             stunChance: 0, // 0..1
             confuseEnemies: false,
-            saboteurMark: false // marked enemies take more damage
+            saboteurMark: false, // marked enemies take more damage
+            bossDamageBonus: 1,
+            executeThreshold: 0,
+            thorns: 0,
+            slowField: false
         };
         
         let bullets = [];
@@ -476,72 +553,93 @@
         
         const treeNames = ['STUBBORNNESS', 'DEFIANCE', 'CHAOS', 'CONTRARIAN', 'REANIMATION', 'SABOTAGE'];
         const SPECIALIZATION_THRESHOLD = 4;
+        const LEADERBOARD_KEY = 'contraryLarryLocalLeaderboardV1';
+        const BRANCH_NAMES = {
+            STUBBORNNESS: { A: 'BULWARK', B: 'RETALIATION' },
+            DEFIANCE: { A: 'SNIPER', B: 'GUNSLINGER' },
+            CHAOS: { A: 'EXPLOSIONS', B: 'BARRAGE' },
+            CONTRARIAN: { A: 'DASHER', B: 'PHANTOM' },
+            REANIMATION: { A: 'HORDE', B: 'SPECTERS' },
+            SABOTAGE: { A: 'POISON', B: 'CONTROL' }
+        };
         
         const upgrades = [
-            // STUBBORNNESS tree - tank and survival
-            { id: 'stub1', tree: 'STUBBORNNESS', name: 'Thick Skin', desc: 'Larry ignores 15% damage.', max: 3, apply: () => { player.armor += 0.15; } },
-            { id: 'stub2', tree: 'STUBBORNNESS', name: 'Fortified', desc: '+25 max HP.', max: 3, apply: () => { player.maxHealth += 25; player.health += 25; } },
-            { id: 'stub3', tree: 'STUBBORNNESS', name: 'Unmovable', desc: 'Push enemies back on hit.', max: 3, requires: 'stub1', apply: () => { player.recoil += 1.2; } },
-            { id: 'stub4', tree: 'STUBBORNNESS', name: 'Contrary Shield', desc: 'Heal 3 HP per kill.', max: 2, requires: 'stub2', apply: () => { player.lifeSteal += 3; } },
-            { id: 'stub5', tree: 'STUBBORNNESS', name: 'Iron Will', desc: '+30 HP, +20% armor, slow regen.', max: 1, requires: 'stub3', apply: () => { player.maxHealth += 30; player.health += 30; player.armor += 0.20; player.hasRegen = true; }},
-            { id: 'stub6', tree: 'STUBBORNNESS', name: 'Bunker Training', desc: 'Enemy bullets hurt 35% less.', max: 1, requires: 'stub5', apply: () => { player.bulletArmor = 0.35; }},
-            { id: 'stub7', tree: 'STUBBORNNESS', name: 'PENULTIMATE: Last Stand', desc: 'Below 35% HP, gain armor and damage.', max: 1, requires: 'stub6', apply: () => { player.lastStand = true; }},
-            { id: 'stub8', tree: 'STUBBORNNESS', name: 'IMMOVABLE OBJECT', desc: 'Knockback aura, longer invulnerability.', max: 1, requires: 'stub7', apply: () => { player.recoil += 3; player.hasKnockbackAura = true; player.invulnDuration = 150; }},
-            
-            // DEFIANCE tree - focused damage
-            { id: 'def1', tree: 'DEFIANCE', name: 'Defiant Rounds', desc: '+40% bullet damage.', max: 3, apply: () => { player.damage *= 1.4; } },
-            { id: 'def2', tree: 'DEFIANCE', name: 'Rapid Defiance', desc: '-25% fire-rate delay.', max: 3, apply: () => { player.fireRate *= 0.75; } },
-            { id: 'def3', tree: 'DEFIANCE', name: 'Armor Piercing', desc: 'Bullets pierce enemies.', max: 1, requires: 'def1', apply: () => { player.piercing = true; } },
-            { id: 'def4', tree: 'DEFIANCE', name: 'Explosive Dissent', desc: 'Bullets explode on hit.', max: 1, requires: 'def1', apply: () => { player.explosiveRounds = true; } },
-            { id: 'def5', tree: 'DEFIANCE', name: 'Critical Strike', desc: '25% crit chance, 2x damage.', max: 1, requires: 'def3', apply: () => { player.critChance = 0.25; } },
-            { id: 'def6', tree: 'DEFIANCE', name: 'Dead Drop Ammo', desc: 'Crits reload your next shot faster.', max: 1, requires: 'def5', apply: () => { player.critReload = true; }},
-            { id: 'def7', tree: 'DEFIANCE', name: 'PENULTIMATE: No Witnesses', desc: 'Kills briefly boost damage.', max: 1, requires: 'def6', apply: () => { player.killDamageBoost = true; player.killBoostTimer = 0; }},
-            { id: 'def8', tree: 'DEFIANCE', name: 'OVERWHELMING FORCE', desc: 'Triple damage, near-instant reload.', max: 1, requires: 'def7', apply: () => { player.damage *= 3; player.fireRate = Math.max(player.fireRate * 0.4, MIN_FIRE_RATE); player.bulletSpeed *= 1.5; }},
-            
-            // CHAOS tree - spread and area damage
-            { id: 'chaos1', tree: 'CHAOS', name: 'Chaotic Burst', desc: 'Fire 1 extra bullet.', max: 3, apply: () => { player.multishot += 1; } },
-            { id: 'chaos2', tree: 'CHAOS', name: 'Scatter Shot', desc: 'Add 1 spread angle.', max: 2, apply: () => { player.spread += 1; } },
-            { id: 'chaos3', tree: 'CHAOS', name: 'Unpredictable', desc: '+30% bullet speed.', max: 2, requires: 'chaos1', apply: () => { player.bulletSpeed *= 1.3; } },
-            { id: 'chaos4', tree: 'CHAOS', name: 'Mayhem', desc: 'Bigger bullets, capped to prevent exploits.', max: 2, requires: 'chaos2', apply: () => { player.bulletSize *= 1.4; } },
-            { id: 'chaos5', tree: 'CHAOS', name: 'Chain Reaction', desc: 'Explosions chain to nearby foes.', max: 1, requires: 'chaos4', apply: () => { player.explosiveRounds = true; player.chainExplosions = true; }},
-            { id: 'chaos6', tree: 'CHAOS', name: 'Wild Ricochet', desc: 'Some bullets bounce once off walls.', max: 1, requires: 'chaos5', apply: () => { player.ricochet = true; }},
-            { id: 'chaos7', tree: 'CHAOS', name: 'PENULTIMATE: Spiral Pattern', desc: 'Barrage fires more often.', max: 1, requires: 'chaos6', apply: () => { player.barrageRateBonus = 35; }},
-            { id: 'chaos8', tree: 'CHAOS', name: 'BULLET HELL', desc: '360-degree rotating barrage.', max: 1, requires: 'chaos7', apply: () => { player.hasBarrage = true; player.barrageDamage = player.damage * 0.6; }},
-            
-            // CONTRARIAN tree - mobility and dodge
-            { id: 'contra1', tree: 'CONTRARIAN', name: 'Contrary Steps', desc: '+25% move speed.', max: 3, apply: () => { player.speed *= 1.25; } },
-            { id: 'contra2', tree: 'CONTRARIAN', name: 'Evasive', desc: '+0.25s invulnerability after hit.', max: 2, apply: () => { player.iframeBonus = (player.iframeBonus || 0) + 15; } },
-            { id: 'contra3', tree: 'CONTRARIAN', name: 'Fast Reflexes', desc: '+20% damage and speed.', max: 2, requires: 'contra1', apply: () => { player.damage *= 1.2; player.speed *= 1.2; } },
-            { id: 'contra4', tree: 'CONTRARIAN', name: 'Parkour', desc: '+15 HP, +15% speed.', max: 2, requires: 'contra1', apply: () => { player.maxHealth += 15; player.health += 15; player.speed *= 1.15; } },
-            { id: 'contra5', tree: 'CONTRARIAN', name: 'Shadow Step', desc: 'Dash with Space.', max: 1, requires: 'contra3', apply: () => { player.hasDash = true; player.dashCooldown = 0; }},
-            { id: 'contra6', tree: 'CONTRARIAN', name: 'Smoke Bomb', desc: 'Dash damages nearby enemies.', max: 1, requires: 'contra5', apply: () => { player.dashBlast = true; }},
-            { id: 'contra7', tree: 'CONTRARIAN', name: 'PENULTIMATE: Spybreaker', desc: 'Auto-dodge every few seconds.', max: 1, requires: 'contra6', apply: () => { player.autoDodge = true; player.autoDodgeCooldown = 0; }},
-            { id: 'contra8', tree: 'CONTRARIAN', name: 'PERFECT DODGE', desc: 'Longer invulnerability and faster dash.', max: 1, requires: 'contra7', apply: () => { player.invulnDuration = 90; player.dashMaxCooldown = 45; }},
-            
-            // REANIMATION tree - necromancy: powerup pickups raise allied agents
-            { id: 'rean1', tree: 'REANIMATION', name: 'Field Reanimation', desc: 'Picking up a drop raises a thrall to fight for you.', max: 1, apply: () => { player.hasReanimation = true; } },
-            { id: 'rean2', tree: 'REANIMATION', name: 'Mass Grave', desc: '+1 thrall raised per drop picked up.', max: 2, requires: 'rean1', apply: () => { player.minionsPerPickup += 1; } },
-            { id: 'rean3', tree: 'REANIMATION', name: 'Embalmed Bones', desc: 'Thralls have +60% health and live longer.', max: 2, requires: 'rean1', apply: () => { player.minionHealthMult *= 1.6; player.minionLifespan += 300; } },
-            { id: 'rean4', tree: 'REANIMATION', name: 'Bitter Spite', desc: 'Thralls deal +50% damage.', max: 2, requires: 'rean1', apply: () => { player.minionDamageMult *= 1.5; } },
-            { id: 'rean5', tree: 'REANIMATION', name: 'Spectral Volley', desc: 'Thralls fire ghostly shots at enemies.', max: 1, requires: 'rean4', apply: () => { player.minionShoots = true; } },
-            { id: 'rean6', tree: 'REANIMATION', name: 'Restless Dead', desc: '15% chance enemies you kill rise as thralls.', max: 2, requires: 'rean3', apply: () => { player.minionSpawnsOnKill += 0.15; } },
-            { id: 'rean7', tree: 'REANIMATION', name: 'PENULTIMATE: Death Pact', desc: 'Thralls explode in spite when they fall.', max: 1, requires: 'rean5', apply: () => { player.minionExplodes = true; } },
-            { id: 'rean8', tree: 'REANIMATION', name: 'GRAVE COMMANDER', desc: 'Thralls slow nearby enemies. Massive thrall stat boost.', max: 1, requires: 'rean7', apply: () => { player.minionAura = true; player.minionDamageMult *= 1.6; player.minionHealthMult *= 1.5; player.minionLifespan += 600; } },
+            // STUBBORNNESS: survival, either pure defense or retaliation.
+            { id: 'stub1', tree: 'STUBBORNNESS', branch: 'ROOT', name: 'Thick Skin', desc: 'Larry ignores 10% damage.', max: 2, apply: () => { player.armor += 0.10; } },
+            { id: 'stub2', tree: 'STUBBORNNESS', branch: 'ROOT', name: 'Fortified', desc: '+22 max HP.', max: 2, apply: () => { player.maxHealth += 22; player.health += 22; } },
+            { id: 'stubA1', tree: 'STUBBORNNESS', branch: 'A', name: 'Bunker Training', desc: 'Enemy bullets hurt 25% less.', max: 1, requires: 'stub1', apply: () => { player.bulletArmor = Math.max(player.bulletArmor || 0, 0.25); }},
+            { id: 'stubA2', tree: 'STUBBORNNESS', branch: 'A', name: 'Iron Will', desc: '+30 HP, slow regen.', max: 1, requires: 'stubA1', apply: () => { player.maxHealth += 30; player.health += 30; player.hasRegen = true; }},
+            { id: 'stubA3', tree: 'STUBBORNNESS', branch: 'A', name: 'PENULTIMATE: Last Stand', desc: 'Below 35% HP, gain armor and damage.', max: 1, requires: 'stubA2', apply: () => { player.lastStand = true; }},
+            { id: 'stubA4', tree: 'STUBBORNNESS', branch: 'A', name: 'IMMOVABLE OBJECT', desc: 'Knockback aura, longer invulnerability.', max: 1, requires: 'stubA3', apply: () => { player.recoil += 2.2; player.hasKnockbackAura = true; player.invulnDuration = Math.max(player.invulnDuration, 95); }},
+            { id: 'stubB1', tree: 'STUBBORNNESS', branch: 'B', name: 'Hard Counter', desc: 'Taking contact damage harms nearby enemies.', max: 1, requires: 'stub2', apply: () => { player.thorns = 0.45; }},
+            { id: 'stubB2', tree: 'STUBBORNNESS', branch: 'B', name: 'Refusal to Fall', desc: 'Heal 2 HP per kill, +12% armor.', max: 1, requires: 'stubB1', apply: () => { player.lifeSteal += 2; player.armor += 0.12; }},
+            { id: 'stubB3', tree: 'STUBBORNNESS', branch: 'B', name: 'PENULTIMATE: Payback', desc: 'When hit, next shots deal more damage.', max: 1, requires: 'stubB2', apply: () => { player.payback = true; player.paybackTimer = 0; }},
+            { id: 'stubB4', tree: 'STUBBORNNESS', branch: 'B', name: 'NO SURRENDER', desc: 'Contact damage greatly fuels Payback.', max: 1, requires: 'stubB3', apply: () => { player.paybackPower = 1.65; player.recoil += 1; }},
 
-            // SABOTAGE tree - status effects, slows, poison, weakening
-            { id: 'sab1', tree: 'SABOTAGE', name: 'Slick Rounds', desc: 'Bullets slow enemies on hit.', max: 3, apply: () => { player.slowOnHit = Math.min(0.55, player.slowOnHit + 0.18); player.slowDuration = Math.max(player.slowDuration, 90); } },
-            { id: 'sab2', tree: 'SABOTAGE', name: 'Tainted Ammo', desc: 'Bullets poison enemies for damage over time.', max: 3, apply: () => { player.poisonDamage += 0.5; player.poisonDuration = Math.max(player.poisonDuration, 120); } },
-            { id: 'sab3', tree: 'SABOTAGE', name: 'Soft Targets', desc: 'Hit enemies take +20% damage from all sources.', max: 2, requires: 'sab1', apply: () => { player.weakenStrength = Math.min(0.5, player.weakenStrength + 0.20); } },
-            { id: 'sab4', tree: 'SABOTAGE', name: 'Concussion', desc: '15% chance to stun enemies briefly on hit.', max: 2, requires: 'sab1', apply: () => { player.stunChance = Math.min(0.45, player.stunChance + 0.15); } },
-            { id: 'sab5', tree: 'SABOTAGE', name: 'Acidic Trail', desc: 'Poison spreads to nearby enemies.', max: 1, requires: 'sab2', apply: () => { player.poisonSpreads = true; } },
-            { id: 'sab6', tree: 'SABOTAGE', name: 'False Orders', desc: 'Some hit enemies briefly attack each other.', max: 1, requires: 'sab3', apply: () => { player.confuseEnemies = true; } },
-            { id: 'sab7', tree: 'SABOTAGE', name: 'PENULTIMATE: Marked for Death', desc: 'Hits mark enemies. Marked enemies take +60% damage.', max: 1, requires: 'sab5', apply: () => { player.saboteurMark = true; } },
-            { id: 'sab8', tree: 'SABOTAGE', name: 'TOTAL SABOTAGE', desc: 'Doubled slow strength, poison ticks twice as fast.', max: 1, requires: 'sab7', apply: () => { player.slowOnHit = Math.min(0.75, player.slowOnHit * 2); player.poisonDamage *= 2; player.slowDuration += 60; } },
+            // DEFIANCE: single-target boss killing or rapid fire.
+            { id: 'def1', tree: 'DEFIANCE', branch: 'ROOT', name: 'Defiant Rounds', desc: '+25% bullet damage.', max: 2, apply: () => { player.damage *= 1.25; } },
+            { id: 'def2', tree: 'DEFIANCE', branch: 'ROOT', name: 'Rapid Defiance', desc: '-18% fire-rate delay.', max: 2, apply: () => { player.fireRate *= 0.82; } },
+            { id: 'defA1', tree: 'DEFIANCE', branch: 'A', name: 'Armor Piercing', desc: 'Bullets pierce enemies.', max: 1, requires: 'def1', apply: () => { player.piercing = true; } },
+            { id: 'defA2', tree: 'DEFIANCE', branch: 'A', name: 'Critical Strike', desc: '22% crit chance, 2x damage.', max: 1, requires: 'defA1', apply: () => { player.critChance = 0.22; } },
+            { id: 'defA3', tree: 'DEFIANCE', branch: 'A', name: 'PENULTIMATE: Boss Breaker', desc: 'Deal +35% damage to bosses.', max: 1, requires: 'defA2', apply: () => { player.bossDamageBonus = 1.35; }},
+            { id: 'defA4', tree: 'DEFIANCE', branch: 'A', name: 'ONE SHOT, ONE ARGUMENT', desc: 'Crits execute weakened normal enemies.', max: 1, requires: 'defA3', apply: () => { player.executeThreshold = 0.18; player.critReload = true; }},
+            { id: 'defB1', tree: 'DEFIANCE', branch: 'B', name: 'Dead Drop Ammo', desc: 'Fire faster after kills.', max: 1, requires: 'def2', apply: () => { player.killDamageBoost = true; player.killBoostTimer = 0; }},
+            { id: 'defB2', tree: 'DEFIANCE', branch: 'B', name: 'Magazine Trick', desc: '+1 bullet, slight damage loss.', max: 1, requires: 'defB1', apply: () => { player.multishot += 1; player.damage *= 0.92; }},
+            { id: 'defB3', tree: 'DEFIANCE', branch: 'B', name: 'PENULTIMATE: No Witnesses', desc: 'Kills briefly boost damage and reload.', max: 1, requires: 'defB2', apply: () => { player.noWitnesses = true; }},
+            { id: 'defB4', tree: 'DEFIANCE', branch: 'B', name: 'OVERWHELMING FORCE', desc: 'Big reload boost without unlimited fire.', max: 1, requires: 'defB3', apply: () => { player.damage *= 1.65; player.fireRate = Math.max(player.fireRate * 0.62, MIN_FIRE_RATE); player.bulletSpeed *= 1.25; }},
 
-            // UNIVERSAL upgrades are limited, so the endgame reward choice can appear.
-            { id: 'heal1', tree: 'UNIVERSAL', name: 'First Aid', desc: 'Restore 40 HP now.', max: 3, apply: () => { player.health = Math.min(player.health + 40, player.maxHealth); } },
-            { id: 'uni1', tree: 'UNIVERSAL', name: 'Field Upgrade', desc: '+15 HP, +10% damage.', max: 3, apply: () => { player.maxHealth += 15; player.health += 15; player.damage *= 1.1; } },
-            { id: 'uni2', tree: 'UNIVERSAL', name: 'Spy Map', desc: '+10% speed, +10% bullet speed.', max: 2, apply: () => { player.speed *= 1.1; player.bulletSpeed *= 1.1; } }
+            // CHAOS: explosive chain reactions or bullet patterns.
+            { id: 'chaos1', tree: 'CHAOS', branch: 'ROOT', name: 'Chaotic Burst', desc: '+1 bullet, -8% damage.', max: 2, apply: () => { player.multishot += 1; player.damage *= 0.92; } },
+            { id: 'chaos2', tree: 'CHAOS', branch: 'ROOT', name: 'Scatter Shot', desc: 'Add 1 spread angle.', max: 2, apply: () => { player.spread += 1; } },
+            { id: 'chaosA1', tree: 'CHAOS', branch: 'A', name: 'Explosive Dissent', desc: 'Bullets explode on hit.', max: 1, requires: 'chaos1', apply: () => { player.explosiveRounds = true; }},
+            { id: 'chaosA2', tree: 'CHAOS', branch: 'A', name: 'Chain Reaction', desc: 'Explosions chain to nearby foes.', max: 1, requires: 'chaosA1', apply: () => { player.chainExplosions = true; }},
+            { id: 'chaosA3', tree: 'CHAOS', branch: 'A', name: 'PENULTIMATE: Demolitionist', desc: 'Explosions are larger but bullets are slower.', max: 1, requires: 'chaosA2', apply: () => { player.explosionScale = 1.35; player.bulletSpeed *= 0.90; }},
+            { id: 'chaosA4', tree: 'CHAOS', branch: 'A', name: 'TOTAL MAYHEM', desc: 'Explosive kills release fragments.', max: 1, requires: 'chaosA3', apply: () => { player.fragmentKills = true; }},
+            { id: 'chaosB1', tree: 'CHAOS', branch: 'B', name: 'Wild Ricochet', desc: 'Some bullets bounce once off walls.', max: 1, requires: 'chaos2', apply: () => { player.ricochet = true; }},
+            { id: 'chaosB2', tree: 'CHAOS', branch: 'B', name: 'Unpredictable', desc: '+25% bullet speed.', max: 1, requires: 'chaosB1', apply: () => { player.bulletSpeed *= 1.25; }},
+            { id: 'chaosB3', tree: 'CHAOS', branch: 'B', name: 'PENULTIMATE: Spiral Pattern', desc: 'Unlocks a slow rotating barrage.', max: 1, requires: 'chaosB2', apply: () => { player.hasBarrage = true; player.barrageDamage = player.damage * 0.38; }},
+            { id: 'chaosB4', tree: 'CHAOS', branch: 'B', name: 'BULLET HELL', desc: 'Barrage fires more often.', max: 1, requires: 'chaosB3', apply: () => { player.barrageRateBonus = 28; }},
+
+            // CONTRARIAN: dash offense or dodge survival.
+            { id: 'contra1', tree: 'CONTRARIAN', branch: 'ROOT', name: 'Contrary Steps', desc: '+18% move speed.', max: 2, apply: () => { player.speed *= 1.18; } },
+            { id: 'contra2', tree: 'CONTRARIAN', branch: 'ROOT', name: 'Evasive', desc: '+0.20s invulnerability after hit.', max: 2, apply: () => { player.iframeBonus = (player.iframeBonus || 0) + 12; } },
+            { id: 'contraA1', tree: 'CONTRARIAN', branch: 'A', name: 'Shadow Step', desc: 'Dash with Space.', max: 1, requires: 'contra1', apply: () => { player.hasDash = true; player.dashCooldown = 0; }},
+            { id: 'contraA2', tree: 'CONTRARIAN', branch: 'A', name: 'Smoke Bomb', desc: 'Dash damages nearby enemies.', max: 1, requires: 'contraA1', apply: () => { player.dashBlast = true; }},
+            { id: 'contraA3', tree: 'CONTRARIAN', branch: 'A', name: 'PENULTIMATE: Hit and Run', desc: 'After dashing, shots are stronger.', max: 1, requires: 'contraA2', apply: () => { player.dashDamageBoost = true; }},
+            { id: 'contraA4', tree: 'CONTRARIAN', branch: 'A', name: 'PERFECT ESCAPE', desc: 'Dash cooldown drops and dash goes farther.', max: 1, requires: 'contraA3', apply: () => { player.dashMaxCooldown = 42; player.dashDistance = 105; }},
+            { id: 'contraB1', tree: 'CONTRARIAN', branch: 'B', name: 'Fast Reflexes', desc: '+15% damage and speed.', max: 1, requires: 'contra2', apply: () => { player.damage *= 1.15; player.speed *= 1.15; }},
+            { id: 'contraB2', tree: 'CONTRARIAN', branch: 'B', name: 'Spybreaker', desc: 'Auto-dodge every few seconds.', max: 1, requires: 'contraB1', apply: () => { player.autoDodge = true; player.autoDodgeCooldown = 0; }},
+            { id: 'contraB3', tree: 'CONTRARIAN', branch: 'B', name: 'PENULTIMATE: Phantom Step', desc: 'Longer invulnerability after auto-dodge.', max: 1, requires: 'contraB2', apply: () => { player.invulnDuration = Math.max(player.invulnDuration, 75); }},
+            { id: 'contraB4', tree: 'CONTRARIAN', branch: 'B', name: 'UNTOUCHABLE', desc: 'Auto-dodge cooldown is shorter.', max: 1, requires: 'contraB3', apply: () => { player.autoDodgeBase = 165; }},
+
+            // REANIMATION: quantity or elite ghosts.
+            { id: 'rean1', tree: 'REANIMATION', branch: 'ROOT', name: 'Field Reanimation', desc: 'Picking up a drop raises a thrall.', max: 1, apply: () => { player.hasReanimation = true; } },
+            { id: 'rean2', tree: 'REANIMATION', branch: 'ROOT', name: 'Bone Orders', desc: 'Thralls deal +30% damage.', max: 1, requires: 'rean1', apply: () => { player.minionDamageMult *= 1.3; }},
+            { id: 'reanA1', tree: 'REANIMATION', branch: 'A', name: 'Mass Grave', desc: '+1 thrall per drop.', max: 2, requires: 'rean1', apply: () => { player.minionsPerPickup += 1; }},
+            { id: 'reanA2', tree: 'REANIMATION', branch: 'A', name: 'Restless Dead', desc: '12% chance kills rise as thralls.', max: 2, requires: 'reanA1', apply: () => { player.minionSpawnsOnKill += 0.12; }},
+            { id: 'reanA3', tree: 'REANIMATION', branch: 'A', name: 'PENULTIMATE: Grave Swarm', desc: 'More thralls, shorter lifespan.', max: 1, requires: 'reanA2', apply: () => { player.minionsPerPickup += 2; player.minionLifespan = Math.max(360, player.minionLifespan - 160); }},
+            { id: 'reanA4', tree: 'REANIMATION', branch: 'A', name: 'GRAVE COMMANDER', desc: 'Thrall aura slows enemies.', max: 1, requires: 'reanA3', apply: () => { player.minionAura = true; }},
+            { id: 'reanB1', tree: 'REANIMATION', branch: 'B', name: 'Embalmed Bones', desc: 'Thralls have +75% health and live longer.', max: 1, requires: 'rean2', apply: () => { player.minionHealthMult *= 1.75; player.minionLifespan += 320; }},
+            { id: 'reanB2', tree: 'REANIMATION', branch: 'B', name: 'Spectral Volley', desc: 'Thralls fire ghostly shots.', max: 1, requires: 'reanB1', apply: () => { player.minionShoots = true; }},
+            { id: 'reanB3', tree: 'REANIMATION', branch: 'B', name: 'PENULTIMATE: Death Pact', desc: 'Thralls explode when they fall.', max: 1, requires: 'reanB2', apply: () => { player.minionExplodes = true; }},
+            { id: 'reanB4', tree: 'REANIMATION', branch: 'B', name: 'SPECTER CAPTAIN', desc: 'Elite thrall stat boost.', max: 1, requires: 'reanB3', apply: () => { player.minionDamageMult *= 1.65; player.minionHealthMult *= 1.45; player.minionLifespan += 420; }},
+
+            // SABOTAGE: poison damage or battlefield control.
+            { id: 'sab1', tree: 'SABOTAGE', branch: 'ROOT', name: 'Slick Rounds', desc: 'Bullets slow enemies on hit.', max: 2, apply: () => { player.slowOnHit = Math.min(0.42, player.slowOnHit + 0.16); player.slowDuration = Math.max(player.slowDuration, 85); } },
+            { id: 'sab2', tree: 'SABOTAGE', branch: 'ROOT', name: 'Soft Targets', desc: 'Hit enemies take +15% damage.', max: 2, requires: 'sab1', apply: () => { player.weakenStrength = Math.min(0.36, player.weakenStrength + 0.15); } },
+            { id: 'sabA1', tree: 'SABOTAGE', branch: 'A', name: 'Tainted Ammo', desc: 'Bullets poison enemies over time.', max: 2, requires: 'sab1', apply: () => { player.poisonDamage += 0.45; player.poisonDuration = Math.max(player.poisonDuration, 120); }},
+            { id: 'sabA2', tree: 'SABOTAGE', branch: 'A', name: 'Acidic Trail', desc: 'Poison spreads to nearby enemies.', max: 1, requires: 'sabA1', apply: () => { player.poisonSpreads = true; }},
+            { id: 'sabA3', tree: 'SABOTAGE', branch: 'A', name: 'PENULTIMATE: Marked for Death', desc: 'Poisoned enemies become marked.', max: 1, requires: 'sabA2', apply: () => { player.saboteurMark = true; }},
+            { id: 'sabA4', tree: 'SABOTAGE', branch: 'A', name: 'TOTAL SABOTAGE', desc: 'Poison ticks faster and hits harder.', max: 1, requires: 'sabA3', apply: () => { player.poisonDamage *= 1.85; player.poisonDuration += 70; }},
+            { id: 'sabB1', tree: 'SABOTAGE', branch: 'B', name: 'Concussion', desc: '12% chance to stun on hit.', max: 2, requires: 'sab2', apply: () => { player.stunChance = Math.min(0.32, player.stunChance + 0.12); }},
+            { id: 'sabB2', tree: 'SABOTAGE', branch: 'B', name: 'False Orders', desc: 'Some hit enemies attack each other.', max: 1, requires: 'sabB1', apply: () => { player.confuseEnemies = true; }},
+            { id: 'sabB3', tree: 'SABOTAGE', branch: 'B', name: 'PENULTIMATE: Dead Zone', desc: 'Larry emits a slowing field.', max: 1, requires: 'sabB2', apply: () => { player.slowField = true; }},
+            { id: 'sabB4', tree: 'SABOTAGE', branch: 'B', name: 'BLACKOUT PROTOCOL', desc: 'Stuns last longer and field is stronger.', max: 1, requires: 'sabB3', apply: () => { player.stunBonus = 18; player.slowFieldPower = 0.42; }},
+
+            // UNIVERSAL upgrades are intentionally limited, so the supply reward choice can appear later.
+            { id: 'heal1', tree: 'UNIVERSAL', branch: 'ROOT', name: 'First Aid', desc: 'Restore 40 HP now.', max: 3, apply: () => { player.health = Math.min(player.health + 40, player.maxHealth); } },
+            { id: 'uni1', tree: 'UNIVERSAL', branch: 'ROOT', name: 'Field Upgrade', desc: '+15 HP, +8% damage.', max: 3, apply: () => { player.maxHealth += 15; player.health += 15; player.damage *= 1.08; } },
+            { id: 'uni2', tree: 'UNIVERSAL', branch: 'ROOT', name: 'Spy Map', desc: '+8% speed, +8% bullet speed.', max: 2, apply: () => { player.speed *= 1.08; player.bulletSpeed *= 1.08; } }
         ];
         
         function levelOf(id) { return player.skillLevels[id] || 0; }
@@ -560,13 +658,82 @@
             }
         }
         
+        function branchName(tree, branch) {
+            if (!branch || branch === 'ROOT') return 'ROOT';
+            return (BRANCH_NAMES[tree] && BRANCH_NAMES[tree][branch]) || branch;
+        }
+
+        function branchLockedByChoice(u) {
+            if (!u.branch || u.branch === 'ROOT' || u.tree === 'UNIVERSAL') return false;
+            const chosen = player.chosenBranches[u.tree];
+            return chosen && chosen !== u.branch;
+        }
+
         function isUpgradeAvailable(u) {
             if (player.lockedTrees.includes(u.tree)) return false;
+            if (branchLockedByChoice(u)) return false;
             if (levelOf(u.id) >= u.max) return false;
             if (u.requires && levelOf(u.requires) <= 0) return false;
             return true;
         }
-        
+
+        function chooseUpgrade(upgrade) {
+            if (!isUpgradeAvailable(upgrade)) return;
+            if (upgrade.branch && upgrade.branch !== 'ROOT' && upgrade.tree !== 'UNIVERSAL' && !player.chosenBranches[upgrade.tree]) {
+                player.chosenBranches[upgrade.tree] = upgrade.branch;
+            }
+            player.skillLevels[upgrade.id] = levelOf(upgrade.id) + 1;
+            lockOpposingTrees(upgrade.tree);
+            upgrade.apply();
+            player.bulletSize = Math.min(player.bulletSize, MAX_BULLET_SIZE);
+            player.fireRate = Math.max(player.fireRate, MIN_FIRE_RATE);
+            document.getElementById('upgradeMenu').classList.add('hidden');
+            wave++;
+            gameState = 'playing';
+            spawnWave();
+        }
+
+        function getHealthPackHealAmount() {
+            const startPct = 0.20;
+            const endPct = 0.05;
+            const t = Math.min(1, Math.max(0, (wave - 1) / 24));
+            return Math.max(1, player.maxHealth * (startPct + (endPct - startPct) * t));
+        }
+
+        function loadLeaderboard() {
+            try { return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]'); }
+            catch { return []; }
+        }
+
+        function saveLeaderboard(entries) {
+            localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries.slice(0, 10)));
+        }
+
+        function renderLeaderboard(targetId) {
+            const panel = document.getElementById(targetId);
+            if (!panel) return;
+            const entries = loadLeaderboard();
+            const rows = entries.length
+                ? entries.map((e, i) => '<div>' + (i + 1) + '. ' + e.name + ' — ' + e.score + ' pts · W' + e.wave + '</div>').join('')
+                : '<div>No scores yet.</div>';
+            panel.innerHTML = '<h3>LOCAL HIGH SCORES</h3>' + rows;
+        }
+
+        function submitHighScore() {
+            const input = document.getElementById('scoreNameInput');
+            const raw = (input ? input.value : 'LARRY').trim().toUpperCase();
+            const name = (raw || 'LARRY').replace(/[^A-Z0-9 _-]/g, '').slice(0, 12) || 'LARRY';
+            const entries = loadLeaderboard();
+            entries.push({ name, score, wave, kills, date: new Date().toLocaleDateString() });
+            entries.sort((a, b) => b.score - a.score || b.wave - a.wave || b.kills - a.kills);
+            saveLeaderboard(entries);
+            const entry = document.getElementById('highScoreEntry');
+            if (entry) entry.classList.add('hidden');
+            renderLeaderboard('leaderboardGameOver');
+        }
+
+        renderLeaderboard('leaderboardPanel');
+
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             mouse.x = e.clientX - rect.left;
@@ -629,6 +796,7 @@
             waveTarget = 8 + wave * 4 + Math.floor(wave / 3) * 2;
             const spawnDelay = Math.max(150, 500 - wave * 18);
             if (activeSpawnInterval) clearInterval(activeSpawnInterval);
+            spawnScheduledBosses();
             activeSpawnInterval = setInterval(() => {
                 if (gameState !== 'playing') return;
                 if (waveSpawned >= waveTarget) {
@@ -641,6 +809,38 @@
             }, spawnDelay);
         }
         
+        function spawnScheduledBosses() {
+            if (wave > 0 && wave % 10 === 0) spawnBoss('full');
+            else if (wave > 0 && wave % 5 === 0) spawnBoss('mini');
+        }
+
+        function spawnBoss(rank) {
+            const full = rank === 'full';
+            const scale = 1 + wave * (full ? 0.22 : 0.14);
+            const side = Math.floor(Math.random() * 4);
+            let x = side === 1 ? canvas.width + 50 : side === 3 ? -50 : Math.random() * canvas.width;
+            let y = side === 0 ? -50 : side === 2 ? canvas.height + 50 : Math.random() * canvas.height;
+            enemies.push({
+                x, y, vx: 0, vy: 0,
+                kind: full ? 'nikitaBoss' : 'miniBoss',
+                bossRank: rank,
+                radius: full ? 34 : 24,
+                speed: full ? 1.05 + wave * 0.018 : 1.25 + wave * 0.025,
+                health: (full ? 650 : 310) * scale,
+                maxHealth: (full ? 650 : 310) * scale,
+                contact: full ? 7 + wave * 0.18 : 4.2 + wave * 0.12,
+                armor: full ? 0.18 : 0.10,
+                shootRate: full ? 55 : 80,
+                shootTimer: 35,
+                patternTimer: 120,
+                summonTimer: full ? 260 : 9999,
+                color: full ? '#dc2626' : '#f97316',
+                points: full ? 1600 + wave * 90 : 650 + wave * 45
+            });
+            createParticles(x, y, full ? '#dc2626' : '#f97316', full ? 60 : 35);
+        }
+
+
         function chooseEnemyType() {
             const pool = [
                 { kind: 'scout', radius: 7, speed: 2.2 + wave * 0.08, health: 25 + wave * 4, contact: 0.8, color: '#00ff41', points: 10 },
@@ -662,7 +862,8 @@
             else if (side === 1) { x = canvas.width + 25; y = Math.random() * canvas.height; }
             else if (side === 2) { x = Math.random() * canvas.width; y = canvas.height + 25; }
             else { x = -25; y = Math.random() * canvas.height; }
-            enemies.push({ x, y, vx: 0, vy: 0, ...chooseEnemyType() });
+            const type = chooseEnemyType();
+            enemies.push({ x, y, vx: 0, vy: 0, ...type, maxHealth: type.health });
         }
         
         function shoot() {
@@ -712,8 +913,10 @@
         function dash() {
             if (!player.hasDash || player.dashCooldown > 0) return;
             const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-            player.x += Math.cos(angle) * 80;
-            player.y += Math.sin(angle) * 80;
+            const dashDist = player.dashDistance || 80;
+            player.x += Math.cos(angle) * dashDist;
+            player.y += Math.sin(angle) * dashDist;
+            if (player.dashDamageBoost) player.dashBoostTimer = 90;
             player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
             player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
             player.iframes = 35;
@@ -732,6 +935,8 @@
             if (player.dashCooldown > 0) player.dashCooldown--;
             if (player.autoDodgeCooldown > 0) player.autoDodgeCooldown--;
             if (player.killBoostTimer > 0) player.killBoostTimer--;
+            if (player.paybackTimer > 0) player.paybackTimer--;
+            if (player.dashBoostTimer > 0) player.dashBoostTimer--;
             if (player.hasRegen && waveSpawned % 6 === 0 && Math.random() < 0.02) player.health = Math.min(player.maxHealth, player.health + 0.25);
             
             let dx = 0, dy = 0;
@@ -784,12 +989,16 @@
                             if (player.critReload) player.lastShot -= player.fireRate * 0.35;
                         }
                         if (player.lastStand && player.health < player.maxHealth * 0.35) dmg *= 1.35;
-                        if (player.killBoostTimer > 0) dmg *= 1.25;
+                        if (player.killBoostTimer > 0) dmg *= player.noWitnesses ? 1.38 : 1.22;
+                        if (player.paybackTimer > 0) dmg *= (player.paybackPower || 1.35);
+                        if (player.dashBoostTimer > 0) dmg *= 1.28;
+                        if (e.bossRank) dmg *= (player.bossDamageBonus || 1);
                         // Sabotage: weakened enemies take more damage
                         if (player.weakenStrength > 0 && e._weakTimer > 0) dmg *= (1 + player.weakenStrength);
                         // Sabotage: marked enemies take +60% damage
                         if (player.saboteurMark && e._marked) dmg *= 1.6;
                         e.health -= dmg * (1 - armor);
+                        if (crit && player.executeThreshold > 0 && !e.bossRank && e.maxHealth && e.health < e.maxHealth * player.executeThreshold) e.health = 0;
                         // Apply Sabotage status effects (skip if bullet from minion to keep minions from stacking buffs unfairly)
                         if (!b.fromMinion) {
                             if (player.slowOnHit > 0) {
@@ -801,8 +1010,8 @@
                                 e._poisonTimer = Math.max(e._poisonTimer || 0, player.poisonDuration);
                             }
                             if (player.weakenStrength > 0) e._weakTimer = 60;
-                            if (player.stunChance > 0 && Math.random() < player.stunChance) e._stunTimer = 30;
-                            if (player.saboteurMark) e._marked = true;
+                            if (player.stunChance > 0 && Math.random() < player.stunChance) e._stunTimer = 30 + (player.stunBonus || 0);
+                            if (player.saboteurMark && (e._poisonTimer > 0 || Math.random() < 0.2)) e._marked = true;
                             if (player.confuseEnemies && Math.random() < 0.10) e._confused = 90;
                         }
                         if (player.explosiveRounds) createExplosion(e.x, e.y, player.chainExplosions);
@@ -867,10 +1076,12 @@
                     if (e.sprintTimer % 160 > 115) speed *= 1.8;
                 }
                 if (e.kind === 'marksman' && dist < 250) speed *= 0.25;
+                if (e.bossRank && dist < 180) speed *= 0.55;
                 // Apply slow from sabotage / minion aura
                 const slowFromBullets = e._slowAmount || 0;
                 const slowFromMinions = e._minionSlow > 0 ? 0.35 : 0;
-                const totalSlow = Math.min(0.85, slowFromBullets + slowFromMinions);
+                const slowFromField = player.slowField && Math.hypot(e.x - player.x, e.y - player.y) < 155 ? (player.slowFieldPower || 0.28) : 0;
+                const totalSlow = Math.min(0.85, slowFromBullets + slowFromMinions + slowFromField);
                 speed *= (1 - totalSlow);
                 e.vx = (dx / dist) * speed;
                 e.vy = (dy / dist) * speed;
@@ -882,9 +1093,12 @@
                     if (e.shootTimer <= 0) {
                         e.shootTimer = Math.max(35, e.shootRate - wave * 2);
                         const a = Math.atan2(player.y - e.y, player.x - e.x);
-                        enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * 3.2, vy: Math.sin(a) * 3.2, radius: 4, damage: e.kind === 'nikitaGuard' ? 8 : 5, age: 0, color: e.kind === 'nikitaGuard' ? '#ef4444' : '#facc15' });
+                        const bulletSpeed = e.bossRank ? (e.bossRank === 'full' ? 4.1 : 3.7) : 3.2;
+                        const bulletDamage = e.bossRank === 'full' ? 11 + wave * 0.12 : e.bossRank === 'mini' ? 8 + wave * 0.08 : (e.kind === 'nikitaGuard' ? 8 : 5);
+                        enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * bulletSpeed, vy: Math.sin(a) * bulletSpeed, radius: e.bossRank ? 5 : 4, damage: bulletDamage, age: 0, color: e.bossRank ? '#ff0041' : (e.kind === 'nikitaGuard' ? '#ef4444' : '#facc15') });
                     }
                 }
+                if (e.bossRank) updateBossPattern(e);
                 if (e.aura && Math.random() < 0.03) createParticles(e.x, e.y, '#38bdf8', 1);
             });
             
@@ -900,6 +1114,9 @@
                     if (player.minionSpawnsOnKill > 0 && Math.random() < player.minionSpawnsOnKill) {
                         spawnMinionsAt(e.x, e.y, 1);
                     }
+                    if (player.fragmentKills && Math.random() < 0.45) {
+                        for (let i = 0; i < 6; i++) bullets.push(makeBullet(e.x, e.y, (Math.PI * 2 / 6) * i, player.damage * 0.35));
+                    }
                     return false;
                 }
                 return true;
@@ -914,6 +1131,8 @@
                         player.health -= e.contact * (1 - reduction);
                         player.lastHitTime = now;
                         player.iframes = (player.invulnDuration || 30) + (player.iframeBonus || 0);
+                        if (player.payback) player.paybackTimer = 150;
+                        if (player.thorns > 0) e.health -= player.damage * player.thorns;
                     }
                     const pushAngle = Math.atan2(e.y - player.y, e.x - player.x);
                     const pushForce = 3.5;
@@ -928,6 +1147,30 @@
             });
         }
         
+        function updateBossPattern(e) {
+            e.patternTimer--;
+            e.summonTimer--;
+            if (e.patternTimer <= 0) {
+                e.patternTimer = e.bossRank === 'full' ? Math.max(75, 145 - wave * 2) : Math.max(95, 170 - wave * 2);
+                const count = e.bossRank === 'full' ? 16 : 10;
+                const speed = e.bossRank === 'full' ? 3.3 + wave * 0.035 : 2.8 + wave * 0.025;
+                for (let i = 0; i < count; i++) {
+                    const a = (Math.PI * 2 / count) * i + Date.now() / 650;
+                    enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, radius: e.bossRank === 'full' ? 5 : 4, damage: e.bossRank === 'full' ? 8 + wave * 0.10 : 5 + wave * 0.08, age: 0, color: e.bossRank === 'full' ? '#dc2626' : '#f97316' });
+                }
+                createParticles(e.x, e.y, e.bossRank === 'full' ? '#dc2626' : '#f97316', 20);
+            }
+            if (e.summonTimer <= 0) {
+                e.summonTimer = Math.max(190, 330 - wave * 3);
+                for (let i = 0; i < 3; i++) {
+                    const a = Math.random() * Math.PI * 2;
+                    const type = chooseEnemyType();
+                    enemies.push({ x: e.x + Math.cos(a) * 45, y: e.y + Math.sin(a) * 45, vx: 0, vy: 0, ...type, health: type.health * 0.65, maxHealth: type.health * 0.65, points: Math.floor(type.points * 0.5) });
+                }
+            }
+        }
+
+
         function updateEnemyBullets() {
             enemyBullets = enemyBullets.filter(b => {
                 b.x += b.vx;
@@ -937,7 +1180,7 @@
                 if (dist < b.radius + player.radius) {
                     if (player.autoDodge && player.autoDodgeCooldown <= 0) {
                         player.iframes = 35;
-                        player.autoDodgeCooldown = 240;
+                        player.autoDodgeCooldown = player.autoDodgeBase || 240;
                         createParticles(player.x, player.y, '#ffffff', 15);
                         return false;
                     }
@@ -1051,7 +1294,7 @@
             powerups = powerups.filter(p => {
                 const dist = Math.hypot(p.x - player.x, p.y - player.y);
                 if (dist < p.radius + player.radius) {
-                    if (p.type === 'health') player.health = Math.min(player.health + 18, player.maxHealth);
+                    if (p.type === 'health') player.health = Math.min(player.health + getHealthPackHealAmount(), player.maxHealth);
                     else player.damage *= 1.04;
                     createParticles(p.x, p.y, '#ffff00', 10);
                     if (player.hasReanimation) spawnMinionsAt(p.x, p.y, player.minionsPerPickup);
@@ -1103,8 +1346,9 @@
         function createExplosion(x, y, chain = false) {
             enemies.forEach(e => {
                 const dist = Math.hypot(e.x - x, e.y - y);
-                if (dist < 55) {
-                    e.health -= player.damage * 0.45;
+                const boomRadius = 55 * (player.explosionScale || 1);
+                if (dist < boomRadius) {
+                    e.health -= player.damage * 0.45 * (player.explosionScale || 1);
                     if (chain && dist > 8 && Math.random() < 0.25) createParticles(e.x, e.y, '#ff6b00', 12);
                 }
             });
@@ -1185,6 +1429,19 @@
                 ctx.strokeStyle = '#ef4444';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(x - 16, y - 18, 32, 36);
+            }
+            if (e.bossRank) {
+                const bossColor = e.bossRank === 'full' ? '#dc2626' : '#f97316';
+                ctx.strokeStyle = bossColor;
+                ctx.lineWidth = e.bossRank === 'full' ? 4 : 3;
+                ctx.strokeRect(x - e.radius, y - e.radius, e.radius * 2, e.radius * 2);
+                px(x - 10, y - 25, 10, 3, bossColor, s);
+                px(x - 8, y - 30, 8, 2, '#111827', s);
+                const pct = Math.max(0, e.health / e.maxHealth);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - 28, y - e.radius - 12, 56, 5);
+                ctx.fillStyle = bossColor;
+                ctx.fillRect(x - 28, y - e.radius - 12, 56 * pct, 5);
             }
         }
         
@@ -1275,6 +1532,7 @@
                 const isChosen = player.chosenTree === t;
                 const isLocked = player.lockedTrees.includes(t);
                 const willTrigger = !player.chosenTree && picks >= SPECIALIZATION_THRESHOLD - 1 && picks < SPECIALIZATION_THRESHOLD;
+                const chosenBranch = player.chosenBranches[t] ? ' · ' + branchName(t, player.chosenBranches[t]) : '';
                 let cls = 'tree-pill';
                 let suffix = '';
                 if (isChosen) { cls += ' chosen'; suffix = ' ★ SPECIALIZED'; }
@@ -1282,17 +1540,49 @@
                 else if (willTrigger) { cls += ' warn'; suffix = ' ⚠ NEXT PICK LOCKS OTHERS'; }
                 const pill = document.createElement('span');
                 pill.className = cls;
-                pill.innerHTML = `${t} <span class="pill-count">${picks}/${SPECIALIZATION_THRESHOLD}</span>${suffix}`;
+                pill.innerHTML = t + chosenBranch + ' <span class="pill-count">' + picks + '/' + SPECIALIZATION_THRESHOLD + '</span>' + suffix;
                 panel.appendChild(pill);
             });
-            // Universal pill (never locks)
             const uniPicks = picksInTree('UNIVERSAL');
             const uniPill = document.createElement('span');
             uniPill.className = 'tree-pill';
             uniPill.style.borderColor = '#9ca3af';
             uniPill.style.color = '#9ca3af';
-            uniPill.innerHTML = `UNIVERSAL <span class="pill-count">${uniPicks}</span> · never locks`;
+            uniPill.innerHTML = 'UNIVERSAL <span class="pill-count">' + uniPicks + '</span> · never locks';
             panel.appendChild(uniPill);
+        }
+
+        function renderUpgradeTree() {
+            const panel = document.getElementById('upgradeTreePanel');
+            if (!panel) return;
+            panel.innerHTML = '';
+            [...treeNames, 'UNIVERSAL'].forEach(tree => {
+                const block = document.createElement('div');
+                block.className = 'tree-block';
+                const chosenBranch = player.chosenBranches[tree] ? ' · chosen: ' + branchName(tree, player.chosenBranches[tree]) : '';
+                block.innerHTML = '<div class="tree-title">' + tree + chosenBranch + '</div>';
+                const roots = upgrades.filter(u => u.tree === tree && (!u.branch || u.branch === 'ROOT'));
+                const rootLine = document.createElement('div');
+                rootLine.className = 'branch-line';
+                rootLine.innerHTML = 'ROOT: ' + (roots.map(renderUpgradeNode).join(' → ') || '—');
+                block.appendChild(rootLine);
+                ['A', 'B'].forEach(branch => {
+                    const list = upgrades.filter(u => u.tree === tree && u.branch === branch);
+                    if (!list.length) return;
+                    const line = document.createElement('div');
+                    line.className = 'branch-line' + (player.chosenBranches[tree] === branch ? ' branch-chosen' : '');
+                    line.innerHTML = branchName(tree, branch) + ': ' + list.map(renderUpgradeNode).join(' → ');
+                    block.appendChild(line);
+                });
+                panel.appendChild(block);
+            });
+        }
+
+        function renderUpgradeNode(u) {
+            const owned = levelOf(u.id) >= u.max;
+            const open = isUpgradeAvailable(u);
+            const cls = owned ? 'node-owned' : open ? 'node-open' : 'node-locked';
+            return '<span class="' + cls + '">' + u.name + ' ' + levelOf(u.id) + '/' + u.max + '</span>';
         }
 
         function showUpgradeMenu() {
@@ -1301,6 +1591,7 @@
             const specHint = document.getElementById('specHint');
             options.innerHTML = '';
             renderTreeStatus();
+            renderUpgradeTree();
 
             if (player.chosenTree) {
                 specHint.innerHTML = `Specialized in <b style="color:#facc15;">${player.chosenTree}</b>. All other main trees are permanently locked. UNIVERSAL upgrades remain available.`;
@@ -1339,9 +1630,11 @@
                 const usable = isUpgradeAvailable(upgrade);
                 const lockedReason = player.lockedTrees.includes(upgrade.tree)
                     ? `LOCKED — ${getChosenTree()} specialization closed this tree.`
-                    : (upgrade.requires && levelOf(upgrade.requires) <= 0
-                        ? `LOCKED — requires earlier skill in ${upgrade.tree} tree.`
-                        : 'LOCKED — already maxed.');
+                    : (branchLockedByChoice(upgrade)
+                        ? `LOCKED — you chose the ${branchName(upgrade.tree, player.chosenBranches[upgrade.tree])} branch.`
+                        : (upgrade.requires && levelOf(upgrade.requires) <= 0
+                            ? `LOCKED — requires earlier skill in ${upgrade.tree} tree.`
+                            : 'LOCKED — already maxed.'));
 
                 // Lock-warning preview for available cards
                 let warningHTML = '';
@@ -1355,6 +1648,11 @@
                         const remaining = SPECIALIZATION_THRESHOLD - afterPicks;
                         warningHTML = `<div class="lock-progress">${upgrade.tree}: ${currentPicks} → ${afterPicks}/${SPECIALIZATION_THRESHOLD} · ${remaining} more pick${remaining === 1 ? '' : 's'} in this tree locks others</div>`;
                     }
+                }
+                if (usable && upgrade.branch && upgrade.branch !== 'ROOT' && upgrade.tree !== 'UNIVERSAL' && !player.chosenBranches[upgrade.tree]) {
+                    warningHTML += `<div class="lock-warning">Branch choice: ${branchName(upgrade.tree, upgrade.branch)} locks the other branch in this tree.</div>`;
+                } else if (usable && upgrade.branch && upgrade.branch !== 'ROOT' && player.chosenBranches[upgrade.tree] === upgrade.branch) {
+                    warningHTML += `<div class="lock-progress">Continuing ${branchName(upgrade.tree, upgrade.branch)} branch.</div>`;
                 } else if (usable && upgrade.tree === 'UNIVERSAL') {
                     warningHTML = `<div class="lock-progress">Universal — does not affect tree locking.</div>`;
                 } else if (usable && player.chosenTree) {
@@ -1363,19 +1661,10 @@
 
                 const card = document.createElement('div');
                 card.className = 'upgrade-card' + (usable ? '' : ' locked');
-                card.innerHTML = `<span class="tree-tag">${upgrade.tree} ${levelOf(upgrade.id)}/${upgrade.max}</span><h3>${upgrade.name}</h3><p>${upgrade.desc}</p>${usable ? warningHTML : `<div class="lock-text">${lockedReason}</div>`}`;
+                const branchLabel = upgrade.branch && upgrade.branch !== 'ROOT' ? ' · ' + branchName(upgrade.tree, upgrade.branch) : '';
+                card.innerHTML = `<span class="tree-tag">${upgrade.tree}${branchLabel} ${levelOf(upgrade.id)}/${upgrade.max}</span><h3>${upgrade.name}</h3><p>${upgrade.desc}</p>${usable ? warningHTML : `<div class="lock-text">${lockedReason}</div>`}`;
                 if (usable) {
-                    card.onclick = () => {
-                        player.skillLevels[upgrade.id] = levelOf(upgrade.id) + 1;
-                        lockOpposingTrees(upgrade.tree);
-                        upgrade.apply();
-                        player.bulletSize = Math.min(player.bulletSize, MAX_BULLET_SIZE);
-                        player.fireRate = Math.max(player.fireRate, MIN_FIRE_RATE);
-                        menu.classList.add('hidden');
-                        wave++;
-                        gameState = 'playing';
-                        spawnWave();
-                    };
+                    card.onclick = () => chooseUpgrade(upgrade);
                 }
                 options.appendChild(card);
             });
@@ -1389,6 +1678,7 @@
             document.getElementById('pauseBtn').classList.add('hidden');
             document.getElementById('finalWave').textContent = wave;
             document.getElementById('finalScore').textContent = score;
+            renderLeaderboard('leaderboardGameOver');
             document.getElementById('gameOver').classList.remove('hidden');
         }
         
