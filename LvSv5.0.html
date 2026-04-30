@@ -538,7 +538,8 @@
             bossDamageBonus: 1,
             executeThreshold: 0,
             thorns: 0,
-            slowField: false
+            slowField: false,
+            _handlerDebuffTimer: 0
         };
         
         let bullets = [];
@@ -565,14 +566,14 @@
         
         const upgrades = [
             // STUBBORNNESS: survival, either pure defense or retaliation.
-            { id: 'stub1', tree: 'STUBBORNNESS', branch: 'ROOT', name: 'Thick Skin', desc: 'Larry ignores 10% damage.', max: 2, apply: () => { player.armor += 0.10; } },
-            { id: 'stub2', tree: 'STUBBORNNESS', branch: 'ROOT', name: 'Fortified', desc: '+22 max HP.', max: 2, apply: () => { player.maxHealth += 22; player.health += 22; } },
-            { id: 'stubA1', tree: 'STUBBORNNESS', branch: 'A', name: 'Bunker Training', desc: 'Enemy bullets hurt 25% less.', max: 1, requires: 'stub1', apply: () => { player.bulletArmor = Math.max(player.bulletArmor || 0, 0.25); }},
-            { id: 'stubA2', tree: 'STUBBORNNESS', branch: 'A', name: 'Iron Will', desc: '+30 HP, slow regen.', max: 1, requires: 'stubA1', apply: () => { player.maxHealth += 30; player.health += 30; player.hasRegen = true; }},
+            { id: 'stub1', tree: 'STUBBORNNESS', branch: 'ROOT', name: 'Thick Skin', desc: 'Larry ignores 14% damage.', max: 2, apply: () => { player.armor += 0.14; } },
+            { id: 'stub2', tree: 'STUBBORNNESS', branch: 'ROOT', name: 'Fortified', desc: '+28 max HP.', max: 2, apply: () => { player.maxHealth += 28; player.health += 28; } },
+            { id: 'stubA1', tree: 'STUBBORNNESS', branch: 'A', name: 'Bunker Training', desc: 'Enemy bullets hurt 30% less.', max: 1, requires: 'stub1', apply: () => { player.bulletArmor = Math.max(player.bulletArmor || 0, 0.30); }},
+            { id: 'stubA2', tree: 'STUBBORNNESS', branch: 'A', name: 'Iron Will', desc: '+38 HP, slow regen.', max: 1, requires: 'stubA1', apply: () => { player.maxHealth += 38; player.health += 38; player.hasRegen = true; }},
             { id: 'stubA3', tree: 'STUBBORNNESS', branch: 'A', name: 'PENULTIMATE: Last Stand', desc: 'Below 35% HP, gain armor and damage.', max: 1, requires: 'stubA2', apply: () => { player.lastStand = true; }},
             { id: 'stubA4', tree: 'STUBBORNNESS', branch: 'A', name: 'IMMOVABLE OBJECT', desc: 'Knockback aura, longer invulnerability.', max: 1, requires: 'stubA3', apply: () => { player.recoil += 2.2; player.hasKnockbackAura = true; player.invulnDuration = Math.max(player.invulnDuration, 95); }},
-            { id: 'stubB1', tree: 'STUBBORNNESS', branch: 'B', name: 'Hard Counter', desc: 'Taking contact damage harms nearby enemies.', max: 1, requires: 'stub2', apply: () => { player.thorns = 0.45; }},
-            { id: 'stubB2', tree: 'STUBBORNNESS', branch: 'B', name: 'Refusal to Fall', desc: 'Heal 2 HP per kill, +12% armor.', max: 1, requires: 'stubB1', apply: () => { player.lifeSteal += 2; player.armor += 0.12; }},
+            { id: 'stubB1', tree: 'STUBBORNNESS', branch: 'B', name: 'Hard Counter', desc: 'Taking contact damage harms nearby enemies.', max: 1, requires: 'stub2', apply: () => { player.thorns = 0.60; }},
+            { id: 'stubB2', tree: 'STUBBORNNESS', branch: 'B', name: 'Refusal to Fall', desc: 'Heal 3 HP per kill, +15% armor.', max: 1, requires: 'stubB1', apply: () => { player.lifeSteal += 3; player.armor += 0.15; }},
             { id: 'stubB3', tree: 'STUBBORNNESS', branch: 'B', name: 'PENULTIMATE: Payback', desc: 'When hit, next shots deal more damage.', max: 1, requires: 'stubB2', apply: () => { player.payback = true; player.paybackTimer = 0; }},
             { id: 'stubB4', tree: 'STUBBORNNESS', branch: 'B', name: 'NO SURRENDER', desc: 'Contact damage greatly fuels Payback.', max: 1, requires: 'stubB3', apply: () => { player.paybackPower = 1.65; player.recoil += 1; }},
 
@@ -828,7 +829,7 @@
                 speed: full ? 1.05 + wave * 0.018 : 1.25 + wave * 0.025,
                 health: (full ? 650 : 310) * scale,
                 maxHealth: (full ? 650 : 310) * scale,
-                contact: full ? 7 + wave * 0.18 : 4.2 + wave * 0.12,
+                contact: full ? 10 + wave * 0.35 : 6.0 + wave * 0.22,
                 armor: full ? 0.18 : 0.10,
                 shootRate: full ? 55 : 80,
                 shootTimer: 35,
@@ -843,15 +844,15 @@
 
         function chooseEnemyType() {
             const pool = [
-                { kind: 'scout', radius: 7, speed: 2.2 + wave * 0.08, health: 25 + wave * 4, contact: 0.8, color: '#00ff41', points: 10 },
-                { kind: 'agent', radius: 9, speed: 1.5 + wave * 0.06, health: 45 + wave * 8, contact: 1.2, color: '#ff0041', points: 15 }
+                { kind: 'scout', radius: 7, speed: 2.2 + wave * 0.08, health: 25 + wave * 4, contact: 0.8 + wave * 0.20, color: '#00ff41', points: 10 },
+                { kind: 'agent', radius: 9, speed: 1.5 + wave * 0.06, health: 45 + wave * 8, contact: 1.2 + wave * 0.28, color: '#ff0041', points: 15 }
             ];
-            if (wave >= 2) pool.push({ kind: 'bruiser', radius: 12, speed: 1.0 + wave * 0.04, health: 80 + wave * 12, contact: 2.0, armor: 0.15, color: '#ff6b00', points: 25 });
-            if (wave >= 3) pool.push({ kind: 'shield', radius: 10, speed: 1.2 + wave * 0.05, health: 60 + wave * 10, contact: 1.0, armor: 0.25, color: '#c77dff', points: 20 });
-            if (wave >= 5) pool.push({ kind: 'marksman', radius: 8, speed: 1.0 + wave * 0.03, health: 55 + wave * 9, contact: 0.7, shootRate: 110, shootTimer: 60, color: '#facc15', points: 35 });
-            if (wave >= 7) pool.push({ kind: 'saboteur', radius: 8, speed: 2.6 + wave * 0.05, health: 45 + wave * 7, contact: 2.5, sprintTimer: 0, color: '#fb7185', points: 40 });
-            if (wave >= 9) pool.push({ kind: 'handler', radius: 11, speed: 1.1 + wave * 0.03, health: 120 + wave * 14, contact: 1.3, aura: true, color: '#38bdf8', points: 60 });
-            if (wave >= 12 && Math.random() < 0.18) pool.push({ kind: 'nikitaGuard', radius: 14, speed: 1.3 + wave * 0.03, health: 220 + wave * 20, contact: 2.8, armor: 0.20, shootRate: 80, shootTimer: 40, color: '#ef4444', points: 120 });
+            if (wave >= 2) pool.push({ kind: 'bruiser', radius: 12, speed: 1.0 + wave * 0.04, health: 80 + wave * 12, contact: 2.8 + wave * 0.35, armor: 0.15, color: '#ff6b00', points: 25 });
+            if (wave >= 3) pool.push({ kind: 'shield', radius: 10, speed: 1.2 + wave * 0.05, health: 60 + wave * 10, contact: 1.6 + wave * 0.22, armor: 0.25, color: '#c77dff', points: 20 });
+            if (wave >= 5) pool.push({ kind: 'marksman', radius: 8, speed: 1.0 + wave * 0.03, health: 55 + wave * 9, contact: 1.2 + wave * 0.18, shootRate: 110, shootTimer: 60, color: '#facc15', points: 35 });
+            if (wave >= 7) pool.push({ kind: 'saboteur', radius: 8, speed: 2.6 + wave * 0.05, health: 45 + wave * 7, contact: 3.5 + wave * 0.30, sprintTimer: 0, color: '#fb7185', points: 40 });
+            if (wave >= 9) pool.push({ kind: 'handler', radius: 11, speed: 1.1 + wave * 0.03, health: 120 + wave * 14, contact: 1.8 + wave * 0.22, aura: true, color: '#38bdf8', points: 60 });
+            if (wave >= 12 && Math.random() < 0.18) pool.push({ kind: 'nikitaGuard', radius: 14, speed: 1.3 + wave * 0.03, health: 220 + wave * 20, contact: 4.0 + wave * 0.40, armor: 0.20, shootRate: 80, shootTimer: 40, color: '#ef4444', points: 120 });
             return pool[Math.floor(Math.random() * pool.length)];
         }
         
@@ -937,6 +938,7 @@
             if (player.killBoostTimer > 0) player.killBoostTimer--;
             if (player.paybackTimer > 0) player.paybackTimer--;
             if (player.dashBoostTimer > 0) player.dashBoostTimer--;
+            if (player._handlerDebuffTimer > 0) player._handlerDebuffTimer--;
             if (player.hasRegen && waveSpawned % 6 === 0 && Math.random() < 0.02) player.health = Math.min(player.maxHealth, player.health + 0.25);
             
             let dx = 0, dy = 0;
@@ -1094,12 +1096,19 @@
                         e.shootTimer = Math.max(35, e.shootRate - wave * 2);
                         const a = Math.atan2(player.y - e.y, player.x - e.x);
                         const bulletSpeed = e.bossRank ? (e.bossRank === 'full' ? 4.1 : 3.7) : 3.2;
-                        const bulletDamage = e.bossRank === 'full' ? 11 + wave * 0.12 : e.bossRank === 'mini' ? 8 + wave * 0.08 : (e.kind === 'nikitaGuard' ? 8 : 5);
+                        const bulletDamage = e.bossRank === 'full' ? 11 + wave * 0.12 : e.bossRank === 'mini' ? 8 + wave * 0.08 : (e.kind === 'nikitaGuard' ? 10 + wave * 0.15 : 6 + wave * 0.10);
                         enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * bulletSpeed, vy: Math.sin(a) * bulletSpeed, radius: e.bossRank ? 5 : 4, damage: bulletDamage, age: 0, color: e.bossRank ? '#ff0041' : (e.kind === 'nikitaGuard' ? '#ef4444' : '#facc15') });
                     }
                 }
                 if (e.bossRank) updateBossPattern(e);
                 if (e.aura && Math.random() < 0.03) createParticles(e.x, e.y, '#38bdf8', 1);
+                if (e.aura) {
+                    const handlerDist = Math.hypot(e.x - player.x, e.y - player.y);
+                    if (handlerDist < 160) {
+                        // Handler's aura jams Larry's armor — tracked as a debuff timer
+                        player._handlerDebuffTimer = 45; // refreshes each frame while in range
+                    }
+                }
             });
             
             enemies = enemies.filter(e => {
@@ -1126,9 +1135,13 @@
             enemies.forEach(e => {
                 const dist = Math.hypot(e.x - player.x, e.y - player.y);
                 if (dist < e.radius + player.radius) {
-                    if (player.iframes <= 0 && now - player.lastHitTime > 90) {
-                        const reduction = Math.max(0, Math.min(0.75, player.armor + (player.lastStand && player.health < player.maxHealth * 0.35 ? 0.20 : 0)));
-                        player.health -= e.contact * (1 - reduction);
+                    if (player.iframes <= 0 && now - player.lastHitTime > 45) {
+                        const handlerPenalty = (player._handlerDebuffTimer > 0) ? 0.35 : 0;
+                        const reduction = Math.max(0, Math.min(0.75, player.armor - handlerPenalty + (player.lastStand && player.health < player.maxHealth * 0.35 ? 0.20 : 0)));
+                        // Swarm bonus: each additional enemy touching the player adds 20% more contact damage
+                        const touchingCount = enemies.filter(o => Math.hypot(o.x - player.x, o.y - player.y) < o.radius + player.radius).length;
+                        const swarmMult = touchingCount > 1 ? 1 + (touchingCount - 1) * 0.20 : 1;
+                        player.health -= e.contact * (1 - reduction) * swarmMult;
                         player.lastHitTime = now;
                         player.iframes = (player.invulnDuration || 30) + (player.iframeBonus || 0);
                         if (player.payback) player.paybackTimer = 150;
@@ -1185,7 +1198,8 @@
                         return false;
                     }
                     if (player.iframes <= 0) {
-                        const reduction = Math.max(0, Math.min(0.75, (player.bulletArmor || 0) + player.armor * 0.5));
+                        const handlerPenalty = (player._handlerDebuffTimer > 0) ? 0.35 : 0;
+                        const reduction = Math.max(0, Math.min(0.75, (player.bulletArmor || 0) + player.armor * 0.5 - handlerPenalty));
                         player.health -= b.damage * (1 - reduction);
                         player.iframes = 20 + (player.iframeBonus || 0);
                     }
