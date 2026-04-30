@@ -272,10 +272,6 @@
             line-height: 1.5;
             max-width: 600px;
         }
-            color: #ff6b00;
-            font-size: 6px;
-            line-height: 1.4;
-        }
 
         .upgrade-grid {
             display: grid;
@@ -377,6 +373,43 @@
         .hidden {
             display: none !important;
         }
+
+        #weaponMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 780px;
+            max-height: 92vh;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.96);
+            border: 4px solid #facc15;
+            padding: 24px;
+            text-align: center;
+            color: #facc15;
+            z-index: 120;
+            box-shadow: 0 0 30px rgba(250,204,21,0.4);
+        }
+
+        .weapon-card {
+            background: #16213e;
+            border: 3px solid #facc15;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .weapon-card:hover {
+            border-color: #fde047;
+            background: #1f2e52;
+            transform: scale(1.04);
+            box-shadow: 0 0 18px rgba(250,204,21,0.4);
+        }
+        .weapon-card h3 { font-size: 9px; margin-bottom: 6px; color: #facc15; }
+        .weapon-card p  { font-size: 6px; line-height: 1.5; color: #d1d5db; }
+        .weapon-card .wtag { font-size: 6px; color: #9ca3af; margin-bottom: 6px; display:block; }
+
+        
         
         #gameOver {
             position: absolute;
@@ -412,6 +445,8 @@
                 </div>
             </div>
             <div>KILLS: <span id="kills">0</span></div>
+            <div>DMG MOD: <span id="dmgMod">x1.00</span></div>
+            <div id="weaponDisplay" style="color:#facc15; margin-top:4px; display:none;">GUN: <span id="weaponName">PISTOL</span></div>
         </div>
         
         <div id="menu">
@@ -433,6 +468,12 @@
             <button class="menu-btn" onclick="location.reload()">RESTART</button>
         </div>
         
+        <div id="weaponMenu" class="hidden">
+            <h1 style="font-size: 14px; margin-bottom: 8px;">WAVE 10 — CHOOSE YOUR WEAPON</h1>
+            <p style="font-size: 7px; margin-bottom: 16px; color:#9ca3af;">Your weapon determines your base fire-style. All your upgrades still apply!</p>
+            <div class="upgrade-grid" id="weaponOptions" style="grid-template-columns: repeat(3,1fr); gap:12px;"></div>
+        </div>
+
         <div id="upgradeMenu" class="hidden">
             <h1 style="font-size: 14px; margin-bottom: 12px;">WAVE SURVIVED!</h1>
             <p style="font-size: 8px; margin-bottom: 8px;">Choose your upgrade wisely...</p>
@@ -547,6 +588,112 @@
         let particles = [];
         let powerups = [];
         let minions = [];
+        let weaponSelected = false;
+
+        // Track initial damage for modifier display
+        const BASE_DAMAGE_START = 15;
+
+        // Weapon definitions — base stats are MULTIPLIERS on top of player stats from upgrades
+        const WEAPONS = [
+            {
+                id: 'pistol',
+                name: 'STANDARD ISSUE',
+                emoji: '🔫',
+                desc: 'Reliable sidearm. No changes to your current stats.',
+                fireRateMult: 1,
+                damageMult: 1,
+                bulletSpeedMult: 1,
+                multishotAdd: 0,
+                spreadAdd: 0,
+                flamethrower: false,
+                sniper: false,
+            },
+            {
+                id: 'sniper',
+                name: 'SNIPER RIFLE',
+                emoji: '🎯',
+                desc: '+80% damage, +50% bullet speed. Much slower fire rate. Bigger bullet hitbox.',
+                fireRateMult: 2.4,
+                damageMult: 1.8,
+                bulletSpeedMult: 1.5,
+                multishotAdd: 0,
+                spreadAdd: 0,
+                bulletSizeBonus: 3,
+                flamethrower: false,
+                sniper: true,
+            },
+            {
+                id: 'shotgun',
+                name: 'COMBAT SHOTGUN',
+                emoji: '💥',
+                desc: '+3 spread, +2 multishot, -20% damage per bullet. Short range.',
+                fireRateMult: 1.7,
+                damageMult: 0.8,
+                bulletSpeedMult: 0.7,
+                multishotAdd: 2,
+                spreadAdd: 3,
+                flamethrower: false,
+                sniper: false,
+            },
+            {
+                id: 'machinegun',
+                name: 'MACHINE GUN',
+                emoji: '⚙️',
+                desc: '-55% fire rate delay (much faster). -15% damage per bullet. +1 multishot.',
+                fireRateMult: 0.45,
+                damageMult: 0.85,
+                bulletSpeedMult: 1.1,
+                multishotAdd: 1,
+                spreadAdd: 0,
+                flamethrower: false,
+                sniper: false,
+            },
+            {
+                id: 'flamethrower',
+                name: 'FLAMETHROWER',
+                emoji: '🔥',
+                desc: 'Rapid short-range fire blasts. +3 spread, very fast fire rate, reduced range. Always applies burn.',
+                fireRateMult: 0.22,
+                damageMult: 0.45,
+                bulletSpeedMult: 0.38,
+                multishotAdd: 0,
+                spreadAdd: 3,
+                flamethrower: true,
+                sniper: false,
+            },
+            {
+                id: 'railgun',
+                name: 'RAILGUN',
+                emoji: '⚡',
+                desc: '+120% damage, always piercing, +1 multishot. Very slow fire rate. Bullets arc through everything.',
+                fireRateMult: 3.2,
+                damageMult: 2.2,
+                bulletSpeedMult: 1.8,
+                multishotAdd: 1,
+                spreadAdd: 0,
+                alwaysPiercing: true,
+                flamethrower: false,
+                sniper: false,
+            },
+            {
+                id: 'grenadelauncher',
+                name: 'GRENADE LAUNCHER',
+                emoji: '💣',
+                desc: '+60% damage, always explosive on hit (stacks with Explosive Dissent). Slow arc, medium fire rate. Great crowd clearing.',
+                fireRateMult: 1.55,
+                damageMult: 1.6,
+                bulletSpeedMult: 0.55,
+                multishotAdd: 0,
+                spreadAdd: 0,
+                alwaysPiercing: false,
+                flamethrower: false,
+                sniper: false,
+                grenade: true,
+            },
+        ];
+
+        let activeWeapon = WEAPONS[0]; // default pistol
+
         
         const keys = {};
         let mouse = { x: canvas.width/2, y: canvas.height/2, down: false };
@@ -868,33 +1015,45 @@
         
         function shoot() {
             const now = Date.now();
-            let currentFireRate = player.fireRate;
+            const w = activeWeapon;
+            let currentFireRate = player.fireRate * w.fireRateMult;
             if (player.killBoostTimer > 0) currentFireRate *= 0.85;
             if (now - player.lastShot < currentFireRate) return;
             player.lastShot = now;
             const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-            for (let i = 0; i < player.multishot; i++) {
-                for (let s = 0; s < player.spread; s++) {
-                    const spreadAngle = (s - (player.spread - 1) / 2) * 0.25;
-                    const finalAngle = angle + spreadAngle + (Math.random() - 0.5) * 0.08;
-                    bullets.push(makeBullet(player.x, player.y, finalAngle, player.damage));
+            const shots = player.multishot + w.multishotAdd;
+            const spreads = player.spread + w.spreadAdd;
+            const shotDamage = player.damage * w.damageMult;
+            for (let i = 0; i < shots; i++) {
+                for (let s = 0; s < spreads; s++) {
+                    const spreadAngle = (s - (spreads - 1) / 2) * 0.25;
+                    // Flamethrower adds extra random scatter
+                    const jitter = w.flamethrower ? (Math.random() - 0.5) * 0.45 : (Math.random() - 0.5) * 0.08;
+                    const finalAngle = angle + spreadAngle + jitter;
+                    bullets.push(makeBullet(player.x, player.y, finalAngle, shotDamage, w));
                 }
             }
         }
         
-        function makeBullet(x, y, angle, damage) {
-            const size = Math.min(player.bulletSize, MAX_BULLET_SIZE);
+        function makeBullet(x, y, angle, damage, w) {
+            w = w || activeWeapon;
+            const speed = player.bulletSpeed * w.bulletSpeedMult;
+            const sizeBonus = w.bulletSizeBonus || 0;
+            const size = Math.min(player.bulletSize + sizeBonus, MAX_BULLET_SIZE);
+            const isPiercing = player.piercing || w.alwaysPiercing;
             return {
                 x, y,
-                vx: Math.cos(angle) * player.bulletSpeed,
-                vy: Math.sin(angle) * player.bulletSpeed,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
                 radius: size,
                 hitRadius: Math.min(size * 1.5, MAX_BULLET_HITBOX),
                 damage,
-                piercing: player.piercing,
+                piercing: isPiercing,
                 hits: 0,
                 age: 0,
-                bounces: player.ricochet ? 1 : 0
+                bounces: player.ricochet ? 1 : 0,
+                flamethrower: w.flamethrower || false,
+                grenade: w.grenade || false
             };
         }
         
@@ -962,7 +1121,11 @@
             
             if (enemies.length === 0 && waveSpawned >= waveTarget && gameState === 'playing') {
                 gameState = 'upgrade';
-                showUpgradeMenu();
+                if (wave === 10 && !weaponSelected) {
+                    showWeaponMenu();
+                } else {
+                    showUpgradeMenu();
+                }
             }
             if (player.health <= 0) gameOver();
             updateUI();
@@ -973,9 +1136,15 @@
                 b.x += b.vx;
                 b.y += b.vy;
                 b.age++;
+                // Grenade arc: slight gravity pull
+                if (b.grenade) b.vy += 0.12;
+                const maxAge = b.flamethrower ? 30 : 120;
                 if (b.bounces > 0 && (b.x < 0 || b.x > canvas.width)) { b.vx *= -1; b.bounces--; }
                 if (b.bounces > 0 && (b.y < 0 || b.y > canvas.height)) { b.vy *= -1; b.bounces--; }
-                return b.x > -30 && b.x < canvas.width + 30 && b.y > -30 && b.y < canvas.height + 30 && b.age < 120;
+                const alive = b.x > -30 && b.x < canvas.width + 30 && b.y > -30 && b.y < canvas.height + 30 && b.age < maxAge;
+                // Grenade explodes when it expires (hits the ground / goes off-screen)
+                if (!alive && b.grenade) createExplosion(b.x, b.y, player.chainExplosions);
+                return alive;
             });
             bullets.forEach(b => {
                 enemies.forEach(e => {
@@ -1005,7 +1174,11 @@
                                 e._slowAmount = Math.max(e._slowAmount || 0, player.slowOnHit);
                                 e._slowTimer = Math.max(e._slowTimer || 0, player.slowDuration);
                             }
-                            if (player.poisonDamage > 0) {
+                            // Flamethrower always burns even without Sabotage upgrades
+                            if (b.flamethrower) {
+                                e._poisonDps = Math.max(e._poisonDps || 0, player.poisonDamage > 0 ? player.poisonDamage : 0.3);
+                                e._poisonTimer = Math.max(e._poisonTimer || 0, player.poisonDuration > 0 ? player.poisonDuration : 80);
+                            } else if (player.poisonDamage > 0) {
                                 e._poisonDps = Math.max(e._poisonDps || 0, player.poisonDamage);
                                 e._poisonTimer = Math.max(e._poisonTimer || 0, player.poisonDuration);
                             }
@@ -1014,7 +1187,7 @@
                             if (player.saboteurMark && (e._poisonTimer > 0 || Math.random() < 0.2)) e._marked = true;
                             if (player.confuseEnemies && Math.random() < 0.10) e._confused = 90;
                         }
-                        if (player.explosiveRounds) createExplosion(e.x, e.y, player.chainExplosions);
+                        if (player.explosiveRounds || b.grenade) createExplosion(e.x, e.y, player.chainExplosions);
                         if (player.recoil > 0) {
                             const knockbackAngle = Math.atan2(e.y - player.y, e.x - player.x);
                             e.x += Math.cos(knockbackAngle) * player.recoil * 6;
@@ -1335,6 +1508,14 @@
             document.getElementById('score').textContent = score;
             document.getElementById('kills').textContent = kills;
             document.getElementById('healthBar').style.width = Math.max(0, player.health / player.maxHealth * 100) + '%';
+            // Damage modifier relative to starting base
+            const modRaw = player.damage / BASE_DAMAGE_START;
+            document.getElementById('dmgMod').textContent = 'x' + modRaw.toFixed(2);
+            // Weapon display
+            if (weaponSelected && activeWeapon.id !== 'pistol') {
+                document.getElementById('weaponDisplay').style.display = '';
+                document.getElementById('weaponName').textContent = activeWeapon.name;
+            }
         }
         
         function createParticles(x, y, color, count) {
@@ -1458,10 +1639,22 @@
             powerups.forEach(p => { ctx.fillStyle = p.type === 'health' ? '#ff0080' : '#ffff00'; ctx.fillRect(p.x - p.radius, p.y - p.radius, p.radius * 2, p.radius * 2); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(p.x - p.radius, p.y - p.radius, p.radius * 2, p.radius * 2); });
             bullets.forEach(b => {
                 if (b.fromMinion) { ctx.fillStyle = '#a78bfa'; }
+                else if (b.flamethrower) { ctx.fillStyle = '#ff4500'; }
+                else if (b.grenade) { ctx.fillStyle = '#4ade80'; ctx.strokeStyle = '#166534'; }
                 else { ctx.fillStyle = player.explosiveRounds ? '#ff6b00' : '#00ff41'; }
-                ctx.fillRect(b.x - b.radius, b.y - b.radius, b.radius * 2, b.radius * 2);
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
+                if (b.grenade) {
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.radius + 2, 0, Math.PI * 2);
+                    ctx.fillStyle = '#4ade80';
+                    ctx.fill();
+                    ctx.strokeStyle = '#166534';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else {
+                    ctx.fillRect(b.x - b.radius, b.y - b.radius, b.radius * 2, b.radius * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
+                }
             });
             enemyBullets.forEach(b => { ctx.fillStyle = b.color || '#facc15'; ctx.fillRect(b.x - b.radius, b.y - b.radius, b.radius * 2, b.radius * 2); });
             enemies.forEach(e => {
@@ -1672,6 +1865,40 @@
             menu.classList.remove('hidden');
         }
         
+        function showWeaponMenu() {
+            const menu = document.getElementById('weaponMenu');
+            const options = document.getElementById('weaponOptions');
+            options.innerHTML = '';
+            WEAPONS.forEach(w => {
+                const card = document.createElement('div');
+                card.className = 'weapon-card';
+                card.innerHTML = `
+                    <span class="wtag">${w.emoji} WEAPON</span>
+                    <h3>${w.name}</h3>
+                    <p>${w.desc}</p>
+                    <div class="lock-progress" style="margin-top:8px;">
+                        DMG ×${w.damageMult.toFixed(2)} · SPEED ×${w.fireRateMult.toFixed(2)} fire delay ·
+                        ${w.multishotAdd > 0 ? '+'+w.multishotAdd+' shots · ' : ''}
+                        ${w.spreadAdd > 0 ? '+'+w.spreadAdd+' spread · ' : ''}
+                        ${w.alwaysPiercing ? 'ALWAYS PIERCING · ' : ''}
+                        ${w.flamethrower ? 'ALWAYS BURNS · ' : ''}
+                        ${w.sniper ? 'BIGGER BULLETS · ' : ''}
+                        Stacks with all upgrades.
+                    </div>`;
+                card.onclick = () => selectWeapon(w);
+                options.appendChild(card);
+            });
+            menu.classList.remove('hidden');
+        }
+
+        function selectWeapon(w) {
+            activeWeapon = w;
+            weaponSelected = true;
+            document.getElementById('weaponMenu').classList.add('hidden');
+            // After weapon selection, show the normal upgrade menu
+            showUpgradeMenu();
+        }
+
         function gameOver() {
             gameState = 'gameover';
             if (activeSpawnInterval) clearInterval(activeSpawnInterval);
