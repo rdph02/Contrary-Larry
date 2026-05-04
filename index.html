@@ -1,0 +1,75 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrary Larry vs Nikita the Russian Spy</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="ui">
+            <div>WAVE: <span id="wave">1</span></div>
+            <div>SCORE: <span id="score">0</span></div>
+            <div>HP:
+                <div class="bar">
+                    <div class="bar-fill health-fill" id="healthBar" style="width: 100%"></div>
+                </div>
+            </div>
+            <div>KILLS: <span id="kills">0</span></div>
+            <div>DMG MOD: <span id="dmgMod">x1.00</span></div>
+            <div id="weaponDisplay" style="color:#facc15; margin-top:4px; display:none;">GUN: <span id="weaponName">PISTOL</span></div>
+        </div>
+        
+        <div id="menu">
+            <h1>CONTRARY LARRY</h1>
+            <h2>VS NIKITA THE RUSSIAN SPY</h2>
+            <p style="font-size: 8px; margin: 20px 0;">Larry refuses to cooperate.<br>Nikita, a Russian spy-master, has sent his agents.</p>
+            <button class="menu-btn" onclick="startGame()">START MISSION</button>
+            <div id="leaderboardPanel"></div>
+            <div style="font-size: 7px; margin-top: 20px; color: #666;">
+                WASD: MOVE | MOUSE: AIM | CLICK: SHOOT | P: PAUSE
+            </div>
+        </div>
+        
+        <button id="pauseBtn" class="hidden" onclick="togglePause()">PAUSE</button>
+        
+        <div id="pauseMenu" class="hidden">
+            <h1 style="font-size: 18px; margin-bottom: 30px;">PAUSED</h1>
+            <button class="menu-btn" onclick="togglePause()">RESUME</button>
+            <button class="menu-btn" onclick="location.reload()">RESTART</button>
+        </div>
+        
+        <div id="weaponMenu" class="hidden">
+            <h1 style="font-size: 14px; margin-bottom: 8px;">WAVE 10 — CHOOSE YOUR WEAPON</h1>
+            <p style="font-size: 7px; margin-bottom: 16px; color:#9ca3af;">Your weapon determines your base fire-style. All your upgrades still apply!</p>
+            <div class="upgrade-grid" id="weaponOptions" style="grid-template-columns: repeat(3,1fr); gap:12px;"></div>
+        </div>
+
+        <div id="upgradeMenu" class="hidden">
+            <h1 style="font-size: 14px; margin-bottom: 12px;">WAVE SURVIVED!</h1>
+            <p style="font-size: 8px; margin-bottom: 8px;">Choose your upgrade wisely...</p>
+            <div id="treeStatus"></div>
+            <div id="specHint"></div>
+            <div id="upgradeTreePanel"></div>
+            <div class="upgrade-grid" id="upgradeOptions"></div>
+        </div>
+        
+        <div id="gameOver" class="hidden">
+            <h1>MISSION FAILED</h1>
+            <p style="font-size: 10px; margin: 20px 0;">Wave: <span id="finalWave">1</span></p>
+            <p style="font-size: 10px; margin: 20px 0;">Score: <span id="finalScore">0</span></p>
+            <div id="highScoreEntry">
+                <p style="font-size: 8px; line-height: 1.5;">Enter your name for the local high score board:</p>
+                <input id="scoreNameInput" maxlength="12" value="LARRY">
+                <br>
+                <button class="menu-btn" onclick="submitHighScore()">SAVE SCORE</button>
+            </div>
+            <div id="leaderboardGameOver"></div>
+            <button class="menu-btn" onclick="location.reload()">RETRY</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
