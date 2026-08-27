@@ -20,6 +20,7 @@
             <div>KILLS: <span id="kills">0</span></div>
             <div>DMG MOD: <span id="dmgMod">x1.00</span></div>
             <div id="weaponDisplay" style="color:#facc15; margin-top:4px; display:none;">GUN: <span id="weaponName">PISTOL</span></div>
+            <div id="modeDisplay" style="color:#a78bfa; text-shadow:0 0 8px #7c3aed; margin-top:4px;"></div>
         </div>
         
         <div id="menu">
@@ -28,8 +29,9 @@
             <p style="font-size: 8px; margin: 20px 0;">Larry refuses to cooperate.<br>Nikita, a Russian spy-master, has sent his agents.</p>
             <button class="menu-btn" onclick="startGame()">START MISSION</button>
             <div id="leaderboardPanel"></div>
+            <div id="metaStatus" style="font-size: 7px; margin-top: 10px; color: #facc15;"></div>
             <div style="font-size: 7px; margin-top: 20px; color: #666;">
-                WASD: MOVE | MOUSE: AIM | CLICK: SHOOT | P: PAUSE
+                WASD: MOVE | MOUSE: AIM | CLICK: SHOOT | SPACE: DASH | P: PAUSE | M: MUTE
             </div>
         </div>
         
@@ -38,13 +40,20 @@
         <div id="pauseMenu" class="hidden">
             <h1 style="font-size: 18px; margin-bottom: 30px;">PAUSED</h1>
             <button class="menu-btn" onclick="togglePause()">RESUME</button>
-            <button class="menu-btn" onclick="location.reload()">RESTART</button>
+            <button class="menu-btn" onclick="toggleMute()">SOUND ON/OFF</button>
+            <button class="menu-btn" onclick="restartRun()">RESTART</button>
         </div>
         
         <div id="weaponMenu" class="hidden">
             <h1 style="font-size: 14px; margin-bottom: 8px;">WAVE 10 — CHOOSE YOUR WEAPON</h1>
             <p style="font-size: 7px; margin-bottom: 16px; color:#9ca3af;">Your weapon determines your base fire-style. All your upgrades still apply!</p>
             <div class="upgrade-grid" id="weaponOptions" style="grid-template-columns: repeat(3,1fr); gap:12px;"></div>
+        </div>
+
+        <div id="evolutionMenu" class="hidden">
+            <h1 id="evolutionTitle" style="font-size: 14px; margin-bottom: 8px;">WAVE 20 — EVOLVE YOUR WEAPON</h1>
+            <p style="font-size: 7px; margin-bottom: 16px; color:#9ca3af;">Your weapon has seen enough war to become something more.</p>
+            <div class="upgrade-grid" id="evolutionOptions" style="grid-template-columns: repeat(2,1fr); gap:12px;"></div>
         </div>
 
         <div id="upgradeMenu" class="hidden">
@@ -60,6 +69,7 @@
             <h1>MISSION FAILED</h1>
             <p style="font-size: 10px; margin: 20px 0;">Wave: <span id="finalWave">1</span></p>
             <p style="font-size: 10px; margin: 20px 0;">Score: <span id="finalScore">0</span></p>
+            <p id="runStats" style="font-size: 7px; margin: 0 0 16px 0; color: #9ca3af; line-height: 1.6;"></p>
             <div id="highScoreEntry">
                 <p style="font-size: 8px; line-height: 1.5;">Enter your name for the local high score board:</p>
                 <input id="scoreNameInput" maxlength="12" value="LARRY">
@@ -67,9 +77,14 @@
                 <button class="menu-btn" onclick="submitHighScore()">SAVE SCORE</button>
             </div>
             <div id="leaderboardGameOver"></div>
-            <button class="menu-btn" onclick="location.reload()">RETRY</button>
+            <button class="menu-btn" onclick="restartRun()">RETRY</button>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/systems.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/ui.js"></script>
 </body>
 </html>
